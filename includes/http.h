@@ -238,9 +238,9 @@ int		http_state_run(struct http_state *, u_int8_t,
 
 int		http_argument_urldecode(char *);
 int		http_header_recv(struct netbuf *);
-void		http_populate_get(struct http_request *);
-void		http_populate_post(struct http_request *);
-void		http_populate_multipart_form(struct http_request *);
+size_t		http_populate_get(struct http_request *);
+size_t		http_populate_post(struct http_request *);
+size_t		http_populate_multipart_form(struct http_request *);
 int		http_argument_get(struct http_request *,
 		    const char *, void **, void *, int);
 

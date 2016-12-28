@@ -277,7 +277,6 @@ struct kore_module_handle {
 	char			*path;
 	char			*fname;
 	void            *func;
-	void			*addr;
 
 	int         runtime;
 	int			type;

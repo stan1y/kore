@@ -63,6 +63,12 @@ ifneq ("$(JSONRPC)", "")
 	CFLAGS+=-DKORE_USE_JSONRPC
 endif
 
+ifneq ("$(PYTHON)", "")
+	S_SRC+=src/pykore.c
+	LDFLAGS+=$(shell python3-config --libs)
+	CFLAGS+=$(shell python3-config --includes) -DKORE_USE_PYTHON
+endif
+
 OSNAME=$(shell uname -s | sed -e 's/[-_].*//g' | tr A-Z a-z)
 ifeq ("$(OSNAME)", "darwin")
 	CFLAGS+=-I/opt/local/include/ -I/usr/local/opt/openssl/include

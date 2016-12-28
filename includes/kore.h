@@ -252,10 +252,17 @@ struct kore_auth {
 
 #endif
 
+/* Function & Module Types */
+#define RUNTIME_TYPE_NATIVE 1
+#if defined(KORE_USE_PYTHON)
+#define RUNTIME_TYPE_PYTHON	2
+#endif
+
 #define KORE_MODULE_LOAD	1
 #define KORE_MODULE_UNLOAD	2
 
 struct kore_module {
+	int             runtime;
 	void			*handle;
 	char			*path;
 	char			*onload;
@@ -268,8 +275,11 @@ struct kore_module {
 
 struct kore_module_handle {
 	char			*path;
-	char			*func;
+	char			*fname;
+	void            *func;
 	void			*addr;
+
+	int         runtime;
 	int			type;
 	int			errors;
 	regex_t			rctx;
@@ -433,6 +443,8 @@ extern u_int64_t		kore_websocket_maxframe;
 extern u_int64_t		kore_websocket_timeout;
 extern u_int32_t		kore_socket_backlog;
 
+extern char *python_home;
+
 extern struct listener_head	listeners;
 extern struct kore_worker	*worker;
 extern struct kore_domain_h	domains;
@@ -569,6 +581,7 @@ void		kore_module_onload(void);
 int		kore_module_loaded(void);
 void		kore_domain_closelogs(void);
 void		*kore_module_getsym(const char *);
+int         kore_module_getfunc(void **, const char*);
 void		kore_domain_load_crl(void);
 void		kore_domain_keymgr_init(void);
 void		kore_module_load(const char *, const char *);

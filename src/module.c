@@ -19,6 +19,7 @@
 #include <dlfcn.h>
 
 #include "kore.h"
+#include "pykore.h"
 
 static TAILQ_HEAD(, kore_module)	modules;
 
@@ -68,11 +69,25 @@ kore_module_load(const char *path, const char *onload)
 	module->mtime = 0;
 #endif
 
-	module->handle = dlopen(module->path, RTLD_NOW | RTLD_GLOBAL);
-	if (module->handle == NULL)
-		fatal("%s: %s", path, dlerror());
+	/* module can be of different nature */
+	if (strstr(module->path, ".so") != NULL) {
+		module->runtime = RUNTIME_TYPE_NATIVE;
+		module->handle = dlopen(module->path, RTLD_NOW | RTLD_GLOBAL);
+		if (module->handle == NULL)
+			fatal("%s: %s", path, dlerror());	
+	}
 
-	if (onload != NULL) {
+#if defined(KORE_USE_PYTHON)
+	if (strstr(module->path, ".py") != NULL) {
+		module->runtime = RUNTIME_TYPE_PYTHON;
+		module->handle = kore_pymodule_load(module->path);
+		if (module->handle == NULL)
+			fatal("%s: %s", path, "failed to load python module");	
+	}
+#endif
+
+	/* FIXME: Add python support */
+	if (onload != NULL && module->runtime == RUNTIME_TYPE_NATIVE) {
 		module->onload = kore_strdup(onload);
 		*(void **)&(module->ocb) = dlsym(module->handle, onload);
 		if (module->ocb == NULL)
@@ -149,9 +164,9 @@ kore_module_reload(int cbs)
 
 	TAILQ_FOREACH(dom, &domains, list) {
 		TAILQ_FOREACH(hdlr, &(dom->handlers), list) {
-			hdlr->addr = kore_module_getsym(hdlr->func);
+			kore_module_getfunc(&hdlr->func, hdlr->fname);
 			if (hdlr->func == NULL)
-				fatal("no function '%s' found", hdlr->func);
+				fatal("no function '%s' found", hdlr->fname);
 			hdlr->errors = 0;
 		}
 	}
@@ -174,21 +189,25 @@ kore_module_loaded(void)
 #if !defined(KORE_NO_HTTP)
 int
 kore_module_handler_new(const char *path, const char *domain,
-    const char *func, const char *auth, int type)
+    const char *fname, const char *auth, int type)
 {
+	int 				runtime;
+	void                *func;
 	struct kore_auth		*ap;
-	void				*addr;
 	struct kore_domain		*dom;
 	struct kore_module_handle	*hdlr;
 
 	kore_debug("kore_module_handler_new(%s, %s, %s, %s, %d)", path,
-	    domain, func, auth, type);
+	    domain, fname, auth, type);
 
-	addr = kore_module_getsym(func);
-	if (addr == NULL) {
-		kore_debug("function '%s' not found", func);
+	func = NULL;	
+	runtime = kore_module_getfunc(&func, fname);
+	if (func == NULL) {
+		kore_debug("function '%s' not found", fname);
 		return (KORE_RESULT_ERROR);
 	}
+	kore_debug("loaded function '%s' <%p>, runtime=%d",
+		       fname, func, runtime);
 
 	if ((dom = kore_domain_lookup(domain)) == NULL)
 		return (KORE_RESULT_ERROR);
@@ -204,11 +223,12 @@ kore_module_handler_new(const char *path, const char *domain,
 	hdlr->auth = ap;
 	hdlr->dom = dom;
 	hdlr->errors = 0;
-	hdlr->addr = addr;
+	hdlr->func = func;
 	hdlr->type = type;
+	hdlr->runtime = runtime;
 	TAILQ_INIT(&(hdlr->params));
 	hdlr->path = kore_strdup(path);
-	hdlr->func = kore_strdup(func);
+	hdlr->fname = kore_strdup(fname);
 
 	if (hdlr->type == HANDLER_TYPE_DYNAMIC) {
 		if (regcomp(&(hdlr->rctx), hdlr->path,
@@ -274,16 +294,45 @@ kore_module_handler_find(const char *domain, const char *path)
 #endif /* !KORE_NO_HTTP */
 
 void *
-kore_module_getsym(const char *symbol)
+kore_module_getsym(const char* symbol)
 {
-	void			*ptr;
 	struct kore_module	*module;
+	void                *ptr;
 
 	TAILQ_FOREACH(module, &modules, list) {
 		ptr = dlsym(module->handle, symbol);
 		if (ptr != NULL)
-			return (ptr);
+			return ptr;
 	}
 
-	return (NULL);
+	return NULL;
+}
+
+int
+kore_module_getfunc(void **out, const char *symbol)
+{
+	struct kore_module	*module;
+	void                *ptr;
+
+	ptr = NULL;
+	TAILQ_FOREACH(module, &modules, list) {
+		switch (module->runtime) {
+			default:
+			case RUNTIME_TYPE_NATIVE:
+				ptr = dlsym(module->handle, symbol);
+				break;
+
+			case RUNTIME_TYPE_PYTHON:
+				ptr = kore_pymodule_getfunc(
+					(PyObject*)module->handle, symbol);
+				break;
+		}
+
+		if (ptr != NULL) {
+			out = &ptr;
+			return module->runtime;
+		}
+	}
+
+	return KORE_RESULT_ERROR;
 }

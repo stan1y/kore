@@ -27,6 +27,10 @@
 #include "kore.h"
 #include "http.h"
 
+#if defined(KORE_USE_PYTHON)
+#include "pykore.h"
+#endif
+
 #if defined(KORE_USE_PGSQL)
 #include "pgsql.h"
 #endif
@@ -99,6 +103,10 @@ static int		configure_pgsql_conn_max(char *);
 static int		configure_task_threads(char *);
 #endif
 
+#if defined(KORE_USE_PYTHON)
+static int		configure_python_home(char *);
+#endif
+
 static void		domain_sslstart(void);
 static void		kore_parse_config_file(const char *);
 
@@ -156,6 +164,9 @@ static struct {
 #endif
 #if defined(KORE_USE_TASKS)
 	{ "task_threads",		configure_task_threads },
+#endif
+#if defined(KORE_USE_PYTHON)
+	{ "python_home",		configure_python_home },
 #endif
 	{ NULL,				NULL },
 };
@@ -1069,6 +1080,18 @@ configure_task_threads(char *option)
 		printf("bad value for task_threads: %s\n", option);
 		return (KORE_RESULT_ERROR);
 	}
+
+	return (KORE_RESULT_OK);
+}
+#endif
+
+#if defined(KORE_USE_PYTHON)
+static int
+configure_python_home(char *option)
+{
+	if (python_home != NULL)
+		kore_free(python_home);
+	python_home = kore_strdup(option);
 
 	return (KORE_RESULT_OK);
 }

@@ -64,7 +64,7 @@ ifneq ("$(JSONRPC)", "")
 endif
 
 ifneq ("$(PYTHON)", "")
-	S_SRC+=src/pykore.c
+	S_SRC+=src/pykore.c src/pykore_module.c
 	LDFLAGS+=$(shell python3-config --libs)
 	CFLAGS+=$(shell python3-config --includes) -DKORE_USE_PYTHON
 endif
@@ -99,11 +99,14 @@ $(OBJDIR):
 	@mkdir -p $(OBJDIR)
 
 pykore:
-	$(CC) -fPIC $(CFLAGS) -c src/pykore.c -o $(OBJDIR)/pymodule.o
-	$(CC) $(OBJDIR)/pymodule.o -shared -o $(KORE).pyd
+	$(CC) -fPIC $(CFLAGS) -c src/pykore_module.c -o $(OBJDIR)/pykore_module.o
+	$(CC) $(OBJDIR)/pykore_module.o -shared -o $(KORE).so
 
 install_pykore: $(pykore)
-	install -m 555 $(KORE).pyd
+	install -m 555 $(KORE).so /usr/lib/python3/site-packages
+
+clean_pykore:
+	rm -f $(KORE).so
 
 install:
 	mkdir -p $(INCLUDE_DIR)

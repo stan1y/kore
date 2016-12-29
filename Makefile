@@ -98,6 +98,13 @@ all: $(KORE)
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
 
+pykore:
+	$(CC) -fPIC $(CFLAGS) -c src/pykore.c -o $(OBJDIR)/pymodule.o
+	$(CC) $(OBJDIR)/pymodule.o -shared -o $(KORE).pyd
+
+install_pykore: $(pykore)
+	install -m 555 $(KORE).pyd
+
 install:
 	mkdir -p $(INCLUDE_DIR)
 	mkdir -p $(INSTALL_DIR)

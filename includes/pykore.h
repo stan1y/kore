@@ -18,11 +18,24 @@
 #define __H_PYKORE_H
 
 #include "kore.h"
+#include "http.h"
 #include "Python.h"
 
 extern char	*python_home;
 
-PyObject*		kore_pymodule_load(char *);
-PyObject*       kore_pymodule_getfunc(PyObject *pymod, const char* func);
+PyObject*		pykore_fload(char *);
+PyObject*       pykore_getclb(PyObject *, const char*);
+int             pykore_handle_httpreq(struct http_request *);
+
+typedef struct {
+    PyObject_HEAD
+    struct http_request *req;
+
+} pykore_HttpRequest;
+
+PyObject*		pykore_httpreq_new(struct http_request *);
+
+PyMODINIT_FUNC
+PyInit_kore(void);
 
 #endif //__H_PYKORE_H

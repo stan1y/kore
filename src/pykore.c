@@ -22,10 +22,6 @@ char			*python_home = NULL;
 static int
 kore_obj_contains(PyObject * obj, PyObject * needle)
 {
-	kore_log(LOG_DEBUG, "%s: pyobj=<%p> needle=<%p>",
-		                __FUNCTION__,
-		                obj, needle);
-
 	PyObject *iterator, *item;
 	int found;
 
@@ -64,15 +60,11 @@ kore_append_path(const char *path)
 {
 	PyObject *py_module_path, *py_sys_path;
 
-	kore_log(LOG_DEBUG, "%s: append path '%s'",
-		                __FUNCTION__,
-		                path);
-	
 	py_module_path = PyUnicode_FromString(path);
 	py_sys_path = PySys_GetObject((char*)"path");
 	
 	if (!kore_obj_contains(py_sys_path, py_module_path)) {
-		kore_log(LOG_NOTICE, "loading python modules from '%s'",
+		kore_log(LOG_NOTICE, "new python modules path '%s'",
 			                 path);
 		PyList_Append(py_sys_path, py_module_path);
 	}
@@ -92,22 +84,15 @@ kore_get_wcstr(const char *c)
 static void
 kore_init_python(void)
 {
-	wchar_t *wpython_home;
+	wchar_t *whome;
 
-	if (python_home == NULL || strlen(python_home) == 0) {
-		python_home = kore_malloc(sizeof(char) * PATH_MAX);
-		getcwd(python_home, PATH_MAX);
+	if (python_home != NULL && strlen(python_home) > 0) {
+		kore_log(LOG_DEBUG, "python home is '%s'", python_home);
+		whome = kore_get_wcstr(python_home);
+		Py_SetPythonHome(whome);
+		kore_free(whome);
 	}
-	kore_log(LOG_DEBUG, "python home is '%s'", python_home);
-	kore_log(LOG_DEBUG, "python path is '%s'", getenv("PYTHONPATH"));
 	
-	// Python >= 3.5 only :(
-	// wpython_home = Py_DecodeLocale(python_home, NULL);
-  	
-  	wpython_home = kore_get_wcstr(python_home);
-  	Py_SetPythonHome(wpython_home);
-  	kore_free(wpython_home);
-
   	Py_SetStandardStreamEncoding("utf-8", "utf-8");
 	Py_Initialize();
 }
@@ -115,18 +100,16 @@ kore_init_python(void)
 PyObject *
 kore_pymodule_load(char *path)
 {
-	char           *dname, *base, *cmname;
+	char           *p, *dname, *base, *cmname;
 	PyObject       *mod, *mname;
 	size_t         mnamelen;
 
 	if (!Py_IsInitialized())
 		kore_init_python();
 
-	kore_log(LOG_DEBUG, "%s: loading from path '%s'",
-		                __FUNCTION__,
-		                path);
-
-	dname = dirname(path);
+	p = kore_strdup(path);
+	dname = dirname(p);
+	kore_free(p);
 	if (dname == NULL || strlen(dname) == 0) {
 		kore_log(LOG_ERR, "failed to determine folder path of '%s'",
 			              path);
@@ -134,7 +117,9 @@ kore_pymodule_load(char *path)
 	}
 	kore_append_path(dname);
 
-	base = basename(path);
+	p = kore_strdup(path);
+	base = basename(p);
+	kore_free(p);
 	if (base == NULL || strlen(base) == 0) {
 		kore_log(LOG_ERR, "failed to determine base path of '%s'",
 			              path);
@@ -143,10 +128,7 @@ kore_pymodule_load(char *path)
 
 	// cut off .py extension for module name
 	mnamelen = strlen(base) - 3;
-	kore_log(LOG_DEBUG, "mnamelen=%d base=%s dname=%s",
-		                mnamelen, base, dname);
-
-	cmname = kore_malloc(sizeof(char) * mnamelen);
+	cmname = kore_malloc(mnamelen + 1);
 	strncpy(cmname, base, mnamelen);
 	kore_log(LOG_NOTICE, "loading python module '%s'", cmname);
 	mname = PyUnicode_FromString(cmname);

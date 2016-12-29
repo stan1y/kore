@@ -35,6 +35,10 @@
 #include "tasks.h"
 #endif
 
+#if defined(KORE_USE_PYTHON)
+#include "pykore.h"
+#endif
+
 static int	http_body_recv(struct netbuf *);
 static int	http_body_rewind(struct http_request *);
 static void	http_error_response(struct connection *, int);
@@ -295,10 +299,35 @@ http_process(void)
 	}
 }
 
+static int
+http_call_handler(struct http_request *req)
+{
+	int rc, (*cb)(struct http_request *);
+
+	worker->active_hdlr = req->hdlr;
+	switch (req->hdlr->runtime) {
+		
+		default:
+		case RUNTIME_TYPE_NATIVE:
+			*(void **)&(cb) = req->hdlr->func;
+			rc = cb(req);
+			break;
+
+#if defined(KORE_USE_PYTHON)
+		case RUNTIME_TYPE_PYTHON:
+			rc = pykore_handle_httpreq(req);
+			break;
+#endif
+
+	};
+	worker->active_hdlr = NULL;
+	return rc;
+}
+
 void
 http_process_request(struct http_request *req)
 {
-	int		r, (*cb)(struct http_request *);
+	int		r;
 
 	kore_debug("http_process_request: %p->%p (%s)",
 	    req->owner, req, req->path);
@@ -314,10 +343,7 @@ http_process_request(struct http_request *req)
 
 	switch (r) {
 	case KORE_RESULT_OK:
-		*(void **)&(cb) = req->hdlr->func;
-		worker->active_hdlr = req->hdlr;
-		r = cb(req);
-		worker->active_hdlr = NULL;
+		r = http_call_handler(req);
 		break;
 	case KORE_RESULT_RETRY:
 		break;

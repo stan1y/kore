@@ -81,10 +81,11 @@ kore_get_wcstr(const char *c)
     return w;
 }
 
-static void
+static int
 kore_init_python(void)
 {
 	wchar_t *whome;
+	PyObject *kore_module, *kore, *sysmodules;
 
 	if (python_home != NULL && strlen(python_home) > 0) {
 		kore_log(LOG_DEBUG, "python home is '%s'", python_home);
@@ -92,13 +93,45 @@ kore_init_python(void)
 		Py_SetPythonHome(whome);
 		kore_free(whome);
 	}
-	
+
   	Py_SetStandardStreamEncoding("utf-8", "utf-8");
 	Py_Initialize();
+	
+	kore_module = PyInit_kore();
+	if (kore_module == NULL) {
+		if (PyErr_Occurred())
+			PyErr_Print();
+
+		kore_log(LOG_ERR, "%s: failed to init python interface",
+			              __FUNCTION__);
+		return (KORE_RESULT_ERROR);
+	}
+
+	sysmodules = PySys_GetObject("modules");
+	if (sysmodules == NULL) {
+		Py_DECREF(kore_module);
+
+		if (PyErr_Occurred())
+			PyErr_Print();
+
+		kore_log(LOG_ERR, "%s: failed to setup python interface",
+			              __FUNCTION__);
+		return (KORE_RESULT_ERROR);	
+	}
+
+	kore = PyUnicode_FromString("kore");
+	PyDict_SetItem(sysmodules, kore, kore_module);
+	Py_DECREF(kore);
+	Py_DECREF(kore_module);
+	Py_DECREF(sysmodules);
+
+	kore_log(LOG_NOTICE, "initialized python runtime");
+	return (KORE_RESULT_OK);
 }
 
+/* Load python module from a file */
 PyObject *
-kore_pymodule_load(char *path)
+pykore_fload(char *path)
 {
 	char           *p, *dname, *base, *cmname;
 	PyObject       *mod, *mname;
@@ -130,28 +163,75 @@ kore_pymodule_load(char *path)
 	mnamelen = strlen(base) - 3;
 	cmname = kore_malloc(mnamelen + 1);
 	strncpy(cmname, base, mnamelen);
-	kore_log(LOG_NOTICE, "loading python module '%s'", cmname);
 	mname = PyUnicode_FromString(cmname);
-	kore_free(cmname);
 
 	// import the module
 	mod = PyImport_Import(mname);
 	Py_DECREF(mname);
-
-	if (mod == NULL) {
+	
+	if (mod != NULL) {
+		kore_log(LOG_NOTICE, "loaded python module '%s'", cmname);	
+	}
+	else {
 		if (PyErr_Occurred())
 		  PyErr_Print();
 
 		kore_log(LOG_ERR, "failed to load python module from '%s'",
 			              path);
-		return NULL;
 	}
+	kore_free(cmname);
 
 	return mod;
 }
 
+/* Lookup object arribute by name */
 PyObject *
-kore_pymodule_getfunc(PyObject *pymod, const char* func)
+pykore_getclb(PyObject *pymod, const char* fname)
 {
-	return NULL;
+	PyObject *attr;
+
+	attr = PyObject_GetAttrString(pymod, fname);
+	if (attr == NULL) {
+		return NULL;
+	}
+
+	if (!PyCallable_Check(attr)) {
+    	Py_XDECREF(attr);
+    	return NULL;
+    }
+
+	return attr;
+}
+
+int
+pykore_handle_httpreq(struct http_request *req)
+{
+	PyObject *pyreq, *args, *kwargs, *ret;
+
+	kore_log(LOG_DEBUG, "%s: started", __FUNCTION__);
+
+	pyreq = pykore_httpreq_new(req);
+	if (pyreq == NULL) {
+		return KORE_RESULT_ERROR;
+	}
+
+	kwargs = PyDict_New();
+	args = PyTuple_New(1);
+	PyTuple_SetItem(args, 0, pyreq);
+
+	ret = PyObject_Call(
+		(PyObject*)req->hdlr->func, args, kwargs);
+	Py_DECREF(pyreq);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	if (ret == NULL) {
+		if (PyErr_Occurred())
+			PyErr_Print();
+		
+		return (KORE_RESULT_ERROR);
+	}
+
+	kore_log(LOG_DEBUG, "%s: complete", __FUNCTION__);
+	return KORE_RESULT_OK;
 }

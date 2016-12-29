@@ -80,7 +80,7 @@ kore_module_load(const char *path, const char *onload)
 #if defined(KORE_USE_PYTHON)
 	if (strstr(module->path, ".py") != NULL) {
 		module->runtime = RUNTIME_TYPE_PYTHON;
-		module->handle = kore_pymodule_load(module->path);
+		module->handle = pykore_fload(module->path);
 		if (module->handle == NULL)
 			fatal("%s: %s", path, "failed to load python module");	
 	}
@@ -323,16 +323,19 @@ kore_module_getfunc(void **out, const char *symbol)
 				break;
 
 			case RUNTIME_TYPE_PYTHON:
-				ptr = kore_pymodule_getfunc(
+				ptr = pykore_getclb(
 					(PyObject*)module->handle, symbol);
 				break;
 		}
 
 		if (ptr != NULL) {
-			out = &ptr;
+			*out = ptr;
 			return module->runtime;
 		}
 	}
 
+	kore_log(LOG_ERR, "%s: function '%s' was not found",
+		                __FUNCTION__,
+		                symbol);
 	return KORE_RESULT_ERROR;
 }

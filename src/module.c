@@ -269,20 +269,25 @@ kore_module_handler_free(struct kore_module_handle *hdlr)
 		return;
 
 
+	if (hdlr->fname != NULL)
+		kore_free(hdlr->fname);
+
+
 	if (hdlr->func != NULL) {
 		switch (hdlr->runtime) {
+
 			default:
 			case RUNTIME_TYPE_NATIVE:
-				//FIXME: why are we crashing here???
-				//kore_free(hdlr->func);
+				// nothing to cleanup
+				// dlsym retuned an address
 				break;
-
 
 #if defined(KORE_USE_PYTHON)
 			case RUNTIME_TYPE_PYTHON:
 				Py_DECREF(hdlr->func);
 				break;
 #endif
+
 		}
 	}
 

@@ -30,6 +30,10 @@
 #include "http.h"
 #endif
 
+#if defined(KORE_USE_PYTHON)
+#include "pykore.h"
+#endif
+
 volatile sig_atomic_t			sig_recv;
 
 struct listener_head	listeners;
@@ -104,6 +108,9 @@ version(void)
 #endif
 #if defined(KORE_DEBUG)
 	printf("debug ");
+#endif
+#if defined(KORE_USE_PYTHON)
+	pykore_printver();
 #endif
 #if defined(KORE_SINGLE_BINARY)
 	printf("single ");
@@ -421,6 +428,9 @@ kore_server_start(void)
 #if defined(KORE_USE_JSONRPC)
 	kore_log(LOG_NOTICE, "jsonrpc built-in enabled");
 #endif
+#if defined(KORE_USE_PYTHON)
+	kore_log(LOG_NOTICE, "python built-in enabled");
+#endif
 #if defined(KORE_SINGLE_BINARY)
 	*(void **)&(preload) = kore_module_getsym("kore_preload");
 	if (preload != NULL)
@@ -471,10 +481,16 @@ kore_server_start(void)
 		kore_connection_prune(KORE_CONNECTION_PRUNE_DISCONNECT);
 	}
 
-	kore_platform_event_cleanup();
+	kore_platform_event_cleanup();	
 	kore_connection_cleanup();
 	kore_domain_cleanup();
 	net_cleanup();
+
+#if defined(KORE_USE_PYTHON)
+	kore_python_cleanup();
+#endif
+	
+	kore_log(LOG_DEBUG, "%s: exiting...", __FUNCTION__);
 }
 
 static void

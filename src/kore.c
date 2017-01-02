@@ -489,8 +489,6 @@ kore_server_start(void)
 #if defined(KORE_USE_PYTHON)
 	kore_python_cleanup();
 #endif
-	
-	kore_log(LOG_DEBUG, "%s: exiting...", __FUNCTION__);
 }
 
 static void

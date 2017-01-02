@@ -19,7 +19,11 @@
 #include <dlfcn.h>
 
 #include "kore.h"
+
+#if defined(KORE_USE_PYTHON)
 #include "pykore.h"
+#endif
+
 
 static TAILQ_HEAD(, kore_module)	modules;
 
@@ -321,11 +325,13 @@ kore_module_getfunc(void **out, const char *symbol)
 			case RUNTIME_TYPE_NATIVE:
 				ptr = dlsym(module->handle, symbol);
 				break;
-
+#if defined(KORE_USE_PYTHON)
 			case RUNTIME_TYPE_PYTHON:
 				ptr = pykore_getclb(
 					(PyObject*)module->handle, symbol);
 				break;
+#endif
+
 		}
 
 		if (ptr != NULL) {

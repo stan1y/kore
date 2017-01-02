@@ -28,9 +28,9 @@ static PyObject *PyKoreError;
 static void
 pykore_HttpRequest_dealloc(pykore_HttpRequest *self, void *closure)
 {
-    kore_log(LOG_DEBUG, "%s: req=%p",
-                        __FUNCTION__,
-                        self->req);
+    kore_debug("%s: req=%p",
+               __FUNCTION__,
+               self->req);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -171,8 +171,6 @@ PyObject *
 pykore_httpreq_new(struct http_request *req)
 {
     pykore_HttpRequest *pyreq;
-    
-    kore_log(LOG_DEBUG, "%s: creating request from %p", __FUNCTION__, req);
 
     pyreq = PyObject_New(pykore_HttpRequest, &pykore_HttpRequestType);
     if (pyreq == NULL) {
@@ -217,10 +215,12 @@ pykore_http_response_header(PyObject *self, PyObject *args)
 static PyObject*
 pykore_http_response(PyObject *self, PyObject *args)
 {
-    PyObject *req, *code, *body;
+    PyObject *req;
     pykore_HttpRequest* r;
+    unsigned int code;
+    Py_buffer body;
 
-    if (!PyArg_ParseTuple(args, "OIO", &req, &code, &body))
+    if (!PyArg_ParseTuple(args, "OIy*", &req, &code, &body))
         return NULL;
 
     if (!PyObject_IsInstance(req, (PyObject*)&pykore_HttpRequestType)) {
@@ -228,19 +228,14 @@ pykore_http_response(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    if (!PyBytes_Check(body)) {
-        PyErr_SetString(PyExc_TypeError, "body argument must be bytes.");
-        return NULL;
-    }
-
     r = (pykore_HttpRequest*)req;
     http_response(
         r->req,
-        PyLong_AsLong(code),
-        PyBytes_AsString(body),
-        PyBytes_Size(body));
+        code,
+        body.buf,
+        body.len);
 
-    return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef pykore_methods[] = {

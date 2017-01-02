@@ -208,8 +208,6 @@ pykore_handle_httpreq(struct http_request *req)
 {
 	PyObject *pyreq, *args, *kwargs, *ret;
 
-	kore_log(LOG_DEBUG, "%s: started", __FUNCTION__);
-
 	pyreq = pykore_httpreq_new(req);
 	if (pyreq == NULL) {
 		return KORE_RESULT_ERROR;
@@ -232,6 +230,5 @@ pykore_handle_httpreq(struct http_request *req)
 		return (KORE_RESULT_ERROR);
 	}
 
-	kore_log(LOG_DEBUG, "%s: complete", __FUNCTION__);
 	return KORE_RESULT_OK;
 }

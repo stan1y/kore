@@ -16,6 +16,7 @@
 
 #include "pykore.h"
 #include "libgen.h"
+#include "sys/param.h"
 
 char			*python_home = NULL;
 
@@ -81,8 +82,8 @@ kore_get_wcstr(const char *c)
     return w;
 }
 
-static int
-kore_init_python(void)
+int
+kore_python_init(void)
 {
 	wchar_t *whome;
 	PyObject *kore_module, *kore, *sysmodules;
@@ -129,6 +130,20 @@ kore_init_python(void)
 	return (KORE_RESULT_OK);
 }
 
+void
+kore_python_cleanup(void)
+{
+	if (Py_IsInitialized())
+		Py_Finalize();
+}
+
+void
+pykore_printver()
+{
+	// FIXME: report python version here
+	printf("python ");
+}
+
 /* Load python module from a file */
 PyObject *
 pykore_fload(char *path)
@@ -138,7 +153,7 @@ pykore_fload(char *path)
 	size_t         mnamelen;
 
 	if (!Py_IsInitialized())
-		kore_init_python();
+		kore_python_init();
 
 	p = kore_strdup(path);
 	dname = dirname(p);
@@ -169,18 +184,17 @@ pykore_fload(char *path)
 	mod = PyImport_Import(mname);
 	Py_DECREF(mname);
 	
-	if (mod != NULL) {
-		kore_log(LOG_NOTICE, "loaded python module '%s'", cmname);	
-	}
-	else {
+	if (mod == NULL) {
 		if (PyErr_Occurred())
 		  PyErr_Print();
 
 		kore_log(LOG_ERR, "failed to load python module from '%s'",
 			              path);
+		return NULL;
 	}
 	kore_free(cmname);
 
+	Py_DECREF(mod);
 	return mod;
 }
 
@@ -200,6 +214,7 @@ pykore_getclb(PyObject *pymod, const char* fname)
     	return NULL;
     }
 
+    Py_DECREF(attr);
 	return attr;
 }
 

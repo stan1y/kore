@@ -23,9 +23,13 @@
 
 extern char	*python_home;
 
+int             kore_python_init(void);
+void			kore_python_cleanup(void);
+
 PyObject*		pykore_fload(char *);
 PyObject*       pykore_getclb(PyObject *, const char*);
 int             pykore_handle_httpreq(struct http_request *);
+void            pykore_printver(void);
 
 typedef struct {
     PyObject_HEAD

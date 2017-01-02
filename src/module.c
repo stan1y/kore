@@ -43,7 +43,20 @@ kore_module_cleanup(void)
 		TAILQ_REMOVE(&modules, module, list);
 
 		kore_free(module->path);
-		(void)dlclose(module->handle);
+
+		switch(module->runtime) {
+			default:
+			case RUNTIME_TYPE_NATIVE:
+				(void)dlclose(module->handle);
+				break;
+
+#if defined(KORE_USE_PYTHON)
+			case RUNTIME_TYPE_PYTHON:
+				Py_DECREF(module->handle);
+				break;
+#endif
+		}
+
 		kore_free(module);
 	}
 }
@@ -86,7 +99,7 @@ kore_module_load(const char *path, const char *onload)
 		module->runtime = RUNTIME_TYPE_PYTHON;
 		module->handle = pykore_fload(module->path);
 		if (module->handle == NULL)
-			fatal("%s: %s", path, "failed to load python module");	
+			fatal("%s: %s", path, "failed to load python module");
 	}
 #endif
 
@@ -255,8 +268,25 @@ kore_module_handler_free(struct kore_module_handle *hdlr)
 	if (hdlr == NULL)
 		return;
 
-	if (hdlr->func != NULL)
-		kore_free(hdlr->func);
+
+	if (hdlr->func != NULL) {
+		switch (hdlr->runtime) {
+			default:
+			case RUNTIME_TYPE_NATIVE:
+				//FIXME: why are we crashing here???
+				//kore_free(hdlr->func);
+				break;
+
+
+#if defined(KORE_USE_PYTHON)
+			case RUNTIME_TYPE_PYTHON:
+				Py_DECREF(hdlr->func);
+				break;
+#endif
+		}
+	}
+
+
 	if (hdlr->path != NULL)
 		kore_free(hdlr->path);
 	if (hdlr->type == HANDLER_TYPE_DYNAMIC)

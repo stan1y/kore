@@ -19,9 +19,9 @@
  * into python callbacks and pass arguments as objects
  */
 
+#include <sys/param.h>
+#include <libgen.h>
 #include "pykore.h"
-#include "libgen.h"
-#include "sys/param.h"
 
 char			*python_home = NULL;
 

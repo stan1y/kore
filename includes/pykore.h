@@ -17,9 +17,10 @@
 #ifndef __H_PYKORE_H
 #define __H_PYKORE_H
 
+#include <Python.h>
+#include <structmember.h>
 #include "kore.h"
 #include "http.h"
-#include "Python.h"
 
 extern char	*python_home;
 

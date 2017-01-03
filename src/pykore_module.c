@@ -20,7 +20,6 @@
  */
 
 #include "pykore.h"
-#include "structmember.h"
 #include "http.h"
 
 #define PYCONST(m, name, sym) \

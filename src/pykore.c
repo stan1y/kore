@@ -28,26 +28,26 @@ kore_obj_contains(PyObject * obj, PyObject * needle)
 
 	if (!PyList_Check(obj) && !PyTuple_Check(obj)) {
 		kore_log(LOG_ERR, "%s: <%p> is not a container",
-			              __FUNCTION__,
-			              obj);
+						  __FUNCTION__,
+						  obj);
 		return 0;
 	}
 	
 	iterator = PyObject_GetIter(obj);
 	if (iterator == NULL) {
 		kore_log(LOG_ERR, "%s: <%p> can not iterate",
-			              __FUNCTION__,
-			              obj);
-    	return 0;
-  	}
+						  __FUNCTION__,
+						  obj);
+		return 0;
+	}
 	// compare items
 	found = 0;
 	while ( (item = PyIter_Next(iterator)) ) {
 		if (PyObject_RichCompareBool(item, needle, Py_EQ)) {
 			found = 1;
 			kore_log(LOG_DEBUG, "%s: found <%p> in <%p>",
-			                    __FUNCTION__,
-			                    needle, obj);
+								__FUNCTION__,
+								needle, obj);
 			break;
 		}
 	}
@@ -66,7 +66,7 @@ kore_append_path(const char *path)
 	
 	if (!kore_obj_contains(py_sys_path, py_module_path)) {
 		kore_log(LOG_NOTICE, "new python modules path '%s'",
-			                 path);
+							 path);
 		PyList_Append(py_sys_path, py_module_path);
 	}
 	Py_DECREF(py_module_path);
@@ -75,11 +75,11 @@ kore_append_path(const char *path)
 static wchar_t *
 kore_get_wcstr(const char *c)
 {
-    const size_t sz = strlen(c) + 1;
-    wchar_t* w = kore_malloc(sizeof(wchar_t) * sz);
-    mbstowcs (w, c, sz);
+	const size_t sz = strlen(c) + 1;
+	wchar_t* w = kore_malloc(sizeof(wchar_t) * sz);
+	mbstowcs (w, c, sz);
 
-    return w;
+	return w;
 }
 
 int
@@ -95,7 +95,7 @@ kore_python_init(void)
 		kore_free(whome);
 	}
 
-  	Py_SetStandardStreamEncoding("utf-8", "utf-8");
+	Py_SetStandardStreamEncoding("utf-8", "utf-8");
 	Py_Initialize();
 	
 	kore_module = PyInit_kore();
@@ -104,7 +104,7 @@ kore_python_init(void)
 			PyErr_Print();
 
 		kore_log(LOG_ERR, "%s: failed to init python interface",
-			              __FUNCTION__);
+						  __FUNCTION__);
 		return (KORE_RESULT_ERROR);
 	}
 
@@ -116,7 +116,7 @@ kore_python_init(void)
 			PyErr_Print();
 
 		kore_log(LOG_ERR, "%s: failed to setup python interface",
-			              __FUNCTION__);
+						  __FUNCTION__);
 		return (KORE_RESULT_ERROR);	
 	}
 
@@ -160,7 +160,7 @@ pykore_fload(char *path)
 	kore_free(p);
 	if (dname == NULL || strlen(dname) == 0) {
 		kore_log(LOG_ERR, "failed to determine folder path of '%s'",
-			              path);
+						  path);
 		return NULL;
 	}
 	kore_append_path(dname);
@@ -170,7 +170,7 @@ pykore_fload(char *path)
 	kore_free(p);
 	if (base == NULL || strlen(base) == 0) {
 		kore_log(LOG_ERR, "failed to determine base path of '%s'",
-			              path);
+						  path);
 		return NULL;	
 	}
 
@@ -189,7 +189,7 @@ pykore_fload(char *path)
 		  PyErr_Print();
 
 		kore_log(LOG_ERR, "failed to load python module from '%s'",
-			              path);
+						  path);
 		return NULL;
 	}
 	kore_free(cmname);
@@ -210,11 +210,11 @@ pykore_getclb(PyObject *pymod, const char* fname)
 	}
 
 	if (!PyCallable_Check(attr)) {
-    	Py_XDECREF(attr);
-    	return NULL;
-    }
+		Py_XDECREF(attr);
+		return NULL;
+	}
 
-    Py_DECREF(attr);
+	Py_DECREF(attr);
 	return attr;
 }
 

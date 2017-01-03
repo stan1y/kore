@@ -32,8 +32,8 @@ int             pykore_handle_httpreq(struct http_request *);
 void            pykore_printver(void);
 
 typedef struct {
-    PyObject_HEAD
-    struct http_request *req;
+	PyObject_HEAD
+	struct http_request *req;
 
 } pykore_HttpRequest;
 

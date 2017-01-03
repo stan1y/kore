@@ -265,26 +265,38 @@ static struct PyModuleDef pykore_module = {
 PyMODINIT_FUNC
 PyInit_kore(void)
 {
-	PyObject *m;
+	PyObject *m, *c_ok, *c_err, *c_load, *c_unload;
 
-	// Create types
 	pykore_HttpRequestType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&pykore_HttpRequestType) < 0)
 		return NULL;
 
-	// Create module
 	m = PyModule_Create(&pykore_module);
 	if (m == NULL)
 		return NULL;
 
-	// Setup exception class
 	PyKoreError = PyErr_NewException("kore.error", NULL, NULL);
 	Py_INCREF(PyKoreError);
 	PyModule_AddObject(m, "error", PyKoreError);
 
-	// Add types to module
 	Py_INCREF(&pykore_HttpRequestType);
 	PyModule_AddObject(m, "HttpRequest", (PyObject *)&pykore_HttpRequestType);
+
+	c_ok = PyLong_FromLong(KORE_RESULT_OK);
+	PyModule_AddObject(m, "RESULT_OK", c_ok);
+	Py_DECREF(c_ok);
+
+	c_err = PyLong_FromLong(KORE_RESULT_ERROR);
+	PyModule_AddObject(m, "RESULT_ERROR", c_err);
+	Py_DECREF(c_err);
+
+	c_load = PyLong_FromLong(KORE_MODULE_LOAD);
+	PyModule_AddObject(m, "MODULE_LOAD", c_load);
+	Py_DECREF(c_load);
+
+	c_unload = PyLong_FromLong(KORE_MODULE_UNLOAD);
+	PyModule_AddObject(m, "MODULE_UNLOAD", c_unload);
+	Py_DECREF(c_unload);
 
 	return m;
 }

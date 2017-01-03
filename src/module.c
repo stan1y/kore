@@ -104,9 +104,9 @@ kore_module_load(const char *path, const char *onload)
 #endif
 
 	/* FIXME: Add python support */
-	if (onload != NULL && module->runtime == RUNTIME_TYPE_NATIVE) {
+	if (onload != NULL) {
 		module->onload = kore_strdup(onload);
-		*(void **)&(module->ocb) = dlsym(module->handle, onload);
+		module->ocb = kore_module_getfunc(module, onload);
 		if (module->ocb == NULL)
 			fatal("%s: onload '%s' not present", path, onload);
 	}
@@ -124,9 +124,36 @@ kore_module_onload(void)
 		if (module->ocb == NULL)
 			continue;
 
-		(void)module->ocb(KORE_MODULE_LOAD);
+		(void)kore_module_handler_onload(module, KORE_MODULE_LOAD);
 	}
 #endif
+}
+
+int kore_module_handler_onload(struct kore_module *module, int action)
+{
+	int rc, (*cb)(int);
+
+	rc = KORE_RESULT_ERROR;
+	
+	if (module->ocb == NULL)
+		return rc;
+
+	switch (module->runtime) {
+		default:
+		case RUNTIME_TYPE_NATIVE:
+			*(void **)&(cb) = module->ocb;
+			rc = cb(action);
+			break;
+
+#if defined(KORE_USE_PYTHON)
+		case RUNTIME_TYPE_PYTHON:
+			rc = pykore_handle_onload(module, action);
+			break;
+#endif
+
+	}
+
+	return rc;
 }
 
 void
@@ -149,7 +176,7 @@ kore_module_reload(int cbs)
 			continue;
 
 		if (module->ocb != NULL && cbs == 1) {
-			if (!module->ocb(KORE_MODULE_UNLOAD)) {
+			if (!kore_module_handler_onload(module, KORE_MODULE_UNLOAD)) {
 				kore_log(LOG_NOTICE,
 				    "not reloading %s", module->path);
 				continue;
@@ -173,7 +200,7 @@ kore_module_reload(int cbs)
 			}
 
 			if (cbs)
-				(void)module->ocb(KORE_MODULE_LOAD);
+				(void)kore_module_handler_onload(module, KORE_MODULE_LOAD);
 		}
 
 		kore_log(LOG_NOTICE, "reloaded '%s' module", module->path);
@@ -181,7 +208,7 @@ kore_module_reload(int cbs)
 
 	TAILQ_FOREACH(dom, &domains, list) {
 		TAILQ_FOREACH(hdlr, &(dom->handlers), list) {
-			kore_module_getfunc(&hdlr->func, hdlr->fname);
+			kore_module_findfunc(&hdlr->func, hdlr->fname);
 			if (hdlr->func == NULL)
 				fatal("no function '%s' found", hdlr->fname);
 			hdlr->errors = 0;
@@ -218,7 +245,7 @@ kore_module_handler_new(const char *path, const char *domain,
 	    domain, fname, auth, type);
 
 	func = NULL;	
-	runtime = kore_module_getfunc(&func, fname);
+	runtime = kore_module_findfunc(&func, fname);
 	if (func == NULL) {
 		kore_debug("function '%s' not found", fname);
 		return (KORE_RESULT_ERROR);
@@ -273,23 +300,8 @@ kore_module_handler_free(struct kore_module_handle *hdlr)
 		kore_free(hdlr->fname);
 
 
-	if (hdlr->func != NULL) {
-		switch (hdlr->runtime) {
-
-			default:
-			case RUNTIME_TYPE_NATIVE:
-				// nothing to cleanup
-				// dlsym retuned an address
-				break;
-
-#if defined(KORE_USE_PYTHON)
-			case RUNTIME_TYPE_PYTHON:
-				Py_DECREF(hdlr->func);
-				break;
-#endif
-
-		}
-	}
+	if (hdlr->func != NULL)
+		kore_module_handler_reset(hdlr);
 
 
 	if (hdlr->path != NULL)
@@ -347,36 +359,67 @@ kore_module_getsym(const char* symbol)
 	return NULL;
 }
 
+void *
+kore_module_getfunc(struct kore_module *module, const char *symbol)
+{
+	void                *ptr;
+	
+	ptr = NULL;
+	switch (module->runtime) {
+		default:
+		case RUNTIME_TYPE_NATIVE:
+			ptr = dlsym(module->handle, symbol);
+			break;
+
+#if defined(KORE_USE_PYTHON)
+		case RUNTIME_TYPE_PYTHON:
+			ptr = pykore_getclb(
+				(PyObject*)module->handle, symbol);
+			break;
+#endif
+	}
+
+	return ptr;	
+}
+
 int
-kore_module_getfunc(void **out, const char *symbol)
+kore_module_findfunc(void **out, const char *symbol)
 {
 	struct kore_module	*module;
 	void                *ptr;
 
 	ptr = NULL;
 	TAILQ_FOREACH(module, &modules, list) {
-		switch (module->runtime) {
-			default:
-			case RUNTIME_TYPE_NATIVE:
-				ptr = dlsym(module->handle, symbol);
-				break;
-#if defined(KORE_USE_PYTHON)
-			case RUNTIME_TYPE_PYTHON:
-				ptr = pykore_getclb(
-					(PyObject*)module->handle, symbol);
-				break;
-#endif
-
-		}
-
+		ptr = kore_module_getfunc(module, symbol);
 		if (ptr != NULL) {
 			*out = ptr;
 			return module->runtime;
 		}
 	}
 
-	kore_log(LOG_ERR, "%s: function '%s' was not found",
-		                __FUNCTION__,
-		                symbol);
 	return KORE_RESULT_ERROR;
+}
+
+void
+kore_module_handler_reset(struct kore_module_handle *hdlr)
+{
+	if (hdlr == NULL)
+		return;
+
+	/* runtime specific cleanup of handler func */
+	switch(hdlr->runtime) {
+
+		default:
+		case RUNTIME_TYPE_NATIVE:
+			hdlr->func = NULL;
+			break;
+
+#if defined(KORE_USE_PYTHON)
+
+		case RUNTIME_TYPE_PYTHON:
+			Py_DECREF((PyObject*)hdlr->func);
+			hdlr->func = NULL;
+			break;
+#endif
+	}
 }

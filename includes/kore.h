@@ -266,7 +266,7 @@ struct kore_module {
 	void			*handle;
 	char			*path;
 	char			*onload;
-	int			(*ocb)(int);
+	void			*ocb;
 
 	time_t			mtime;
 
@@ -580,7 +580,9 @@ void		kore_module_onload(void);
 int		kore_module_loaded(void);
 void		kore_domain_closelogs(void);
 void		*kore_module_getsym(const char *);
-int         kore_module_getfunc(void **, const char*);
+int			kore_module_findfunc(void **, const char*);
+void		*kore_module_getfunc(struct kore_module *, const char *);
+void		kore_module_freefunc(struct kore_module *, void *);
 void		kore_domain_load_crl(void);
 void		kore_domain_keymgr_init(void);
 void		kore_module_load(const char *, const char *);
@@ -588,7 +590,10 @@ void		kore_domain_sslstart(struct kore_domain *);
 void		kore_domain_callback(void (*cb)(struct kore_domain *));
 int		kore_module_handler_new(const char *, const char *,
 		    const char *, const char *, int);
+
+void		kore_module_handler_reset(struct kore_module_handle *);
 void		kore_module_handler_free(struct kore_module_handle *);
+int			kore_module_handler_onload(struct kore_module *, int);
 
 struct kore_domain		*kore_domain_lookup(const char *);
 struct kore_module_handle	*kore_module_handler_find(const char *,

@@ -231,10 +231,10 @@ pykore_handle_httpreq(struct http_request *req)
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, pyreq);
+	Py_DECREF(pyreq);
 
 	ret = PyObject_Call(
 		(PyObject*)req->hdlr->func, args, kwargs);
-	Py_DECREF(pyreq);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 
@@ -245,5 +245,42 @@ pykore_handle_httpreq(struct http_request *req)
 		return (KORE_RESULT_ERROR);
 	}
 
+	Py_DECREF(ret);
 	return KORE_RESULT_OK;
+}
+
+int
+pykore_handle_onload(struct kore_module *module, int action)
+{
+	PyObject *pyact, *args, *kwargs, *ret;
+	int rc;
+
+	pyact = PyLong_FromLong(action);
+	kwargs = PyDict_New();
+	args = PyTuple_New(1);
+	PyTuple_SetItem(args, 0, pyact);
+	Py_DECREF(pyact);
+
+	ret = PyObject_Call(
+		(PyObject*)module->ocb, args, kwargs);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	if (ret == NULL) {
+		if (PyErr_Occurred())
+			PyErr_Print();
+		
+		return (KORE_RESULT_ERROR);
+	}
+
+	if (!PyLong_Check(ret)) {
+		kore_log(LOG_ERR, "%s: unexpected value type returned.",
+			              __FUNCTION__);
+		Py_DECREF(ret);
+		return KORE_RESULT_ERROR;
+	}
+
+	rc = PyLong_AsLong(ret);
+	Py_DECREF(ret);
+	return rc;
 }

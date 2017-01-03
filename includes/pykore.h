@@ -29,6 +29,7 @@ void			kore_python_cleanup(void);
 PyObject*		pykore_fload(char *);
 PyObject*       pykore_getclb(PyObject *, const char*);
 int             pykore_handle_httpreq(struct http_request *);
+int				pykore_handle_onload(struct kore_module*, int);
 void            pykore_printver(void);
 
 typedef struct {

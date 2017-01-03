@@ -14,6 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * This file implements glue between kore and python allowing to call
+ * into python callbacks and pass arguments as objects
+ */
+
 #include "pykore.h"
 #include "libgen.h"
 #include "sys/param.h"

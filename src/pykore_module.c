@@ -14,9 +14,21 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * This file implements objects and constans available to
+ * python code executed by kore
+ */
+
 #include "pykore.h"
 #include "structmember.h"
 #include "http.h"
+
+#define PYCONST(m, name, sym) \
+    do { \
+        PyObject *io = PyLong_FromLong(sym); \
+        PyModule_AddObject((m), (name), io); \
+        Py_DECREF(io); \
+    } while(0)
 
 /* Kore exception type */
 static PyObject *PyKoreError; 
@@ -55,7 +67,7 @@ pykore_HttpRequest_agent(pykore_HttpRequest* self, void *closure)
 static PyObject *
 pykore_HttpRequest_method(pykore_HttpRequest* self, void *closure)
 {
-	return PyLong_FromLong(self->req->method);
+	return PyLong_FromUnsignedLong(self->req->method);
 }
 
 static PyObject *
@@ -265,7 +277,7 @@ static struct PyModuleDef pykore_module = {
 PyMODINIT_FUNC
 PyInit_kore(void)
 {
-	PyObject *m, *c_ok, *c_err, *c_load, *c_unload;
+	PyObject *m;
 
 	pykore_HttpRequestType.tp_new = PyType_GenericNew;
 	if (PyType_Ready(&pykore_HttpRequestType) < 0)
@@ -282,21 +294,15 @@ PyInit_kore(void)
 	Py_INCREF(&pykore_HttpRequestType);
 	PyModule_AddObject(m, "HttpRequest", (PyObject *)&pykore_HttpRequestType);
 
-	c_ok = PyLong_FromLong(KORE_RESULT_OK);
-	PyModule_AddObject(m, "RESULT_OK", c_ok);
-	Py_DECREF(c_ok);
-
-	c_err = PyLong_FromLong(KORE_RESULT_ERROR);
-	PyModule_AddObject(m, "RESULT_ERROR", c_err);
-	Py_DECREF(c_err);
-
-	c_load = PyLong_FromLong(KORE_MODULE_LOAD);
-	PyModule_AddObject(m, "MODULE_LOAD", c_load);
-	Py_DECREF(c_load);
-
-	c_unload = PyLong_FromLong(KORE_MODULE_UNLOAD);
-	PyModule_AddObject(m, "MODULE_UNLOAD", c_unload);
-	Py_DECREF(c_unload);
+	PYCONST(m, "RESULT_OK", KORE_RESULT_OK);
+	PYCONST(m, "RESULT_ERROR", KORE_RESULT_ERROR);
+	PYCONST(m, "MODULE_LOAD", KORE_MODULE_LOAD);
+	PYCONST(m, "MODULE_UNLOAD", KORE_MODULE_UNLOAD);
+	PYCONST(m, "METHOD_GET", HTTP_METHOD_GET);
+	PYCONST(m, "METHOD_POST", HTTP_METHOD_POST);
+	PYCONST(m, "METHOD_PUT", HTTP_METHOD_PUT);
+	PYCONST(m, "METHOD_DELETE", HTTP_METHOD_DELETE);
+	PYCONST(m, "METHOD_HEAD", HTTP_METHOD_HEAD);
 
 	return m;
 }

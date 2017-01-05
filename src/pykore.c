@@ -91,7 +91,7 @@ int
 kore_python_init(void)
 {
 	wchar_t *whome;
-	PyObject *kore_module, *kore, *sysmodules;
+	//PyObject *kore_module, *kore, *sysmodules;
 
 	if (python_home != NULL && strlen(python_home) > 0) {
 		kore_log(LOG_DEBUG, "python home is '%s'", python_home);
@@ -101,9 +101,10 @@ kore_python_init(void)
 	}
 
 	Py_SetStandardStreamEncoding("utf-8", "utf-8");
+	PyImport_AppendInittab("kore", &PyInit_kore);
 	Py_Initialize();
 	
-	kore_module = PyInit_kore();
+	/*kore_module = PyInit_kore();
 	if (kore_module == NULL) {
 		if (PyErr_Occurred())
 			PyErr_Print();
@@ -130,7 +131,7 @@ kore_python_init(void)
 	Py_DECREF(kore);
 	Py_DECREF(kore_module);
 	Py_DECREF(sysmodules);
-
+	*/
 	kore_log(LOG_NOTICE, "initialized python runtime");
 	return (KORE_RESULT_OK);
 }
@@ -228,7 +229,7 @@ pykore_handle_httpreq(struct http_request *req)
 {
 	PyObject *pyreq, *args, *kwargs, *ret;
 
-	pyreq = pykore_httpreq_new(req);
+	pyreq = pykore_httpreq_create(req);
 	if (pyreq == NULL) {
 		return KORE_RESULT_ERROR;
 	}

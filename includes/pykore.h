@@ -22,24 +22,25 @@
 #include "kore.h"
 #include "http.h"
 
-extern char	*python_home;
+/* Config setting storage */
+extern char		*python_home;
 
-int             kore_python_init(void);
-void			kore_python_cleanup(void);
+int			 kore_python_init(void);
+void		 kore_python_cleanup(void);
 
-PyObject*		pykore_fload(char *);
-PyObject*       pykore_getclb(PyObject *, const char*);
-int             pykore_handle_httpreq(struct http_request *);
-int				pykore_handle_onload(struct kore_module*, int);
-void            pykore_printver(void);
+PyObject	*pykore_fload(char *);
+PyObject	*pykore_getclb(PyObject *, const char*);
+int			 pykore_handle_httpreq(struct http_request *);
+int			 pykore_handle_onload(struct kore_module*, int);
+void		 pykore_printver(void);
 
-typedef struct {
-	PyObject_HEAD
-	struct http_request *req;
+void		 pykore_httpreq_register(PyObject *);
+PyObject	*pykore_httpreq_create(struct http_request *);
+int			 pykore_httpreq_check(PyObject *);
 
-} pykore_HttpRequest;
-
-PyObject*		pykore_httpreq_new(struct http_request *);
+void		 pykore_httpfile_register(PyObject* );
+PyObject	*pykore_httpfile_create(struct http_file *);
+int			 pykore_httpfile_check(PyObject *);
 
 PyMODINIT_FUNC
 PyInit_kore(void);

@@ -31,19 +31,28 @@ typedef struct {
 static PyObject *
 HttpRequest_host(HttpRequest* self, void *closure)
 {
-	return PyUnicode_FromString(self->req->host);
+	if (self->req->host != NULL && strlen(self->req->host) >= 0)
+		return PyUnicode_FromString(self->req->host);
+
+	Py_RETURN_NONE;
 }
 
 static PyObject *
 HttpRequest_path(HttpRequest* self, void *closure)
 {
-	return PyUnicode_FromString(self->req->path);
+	if (self->req->path != NULL && strlen(self->req->path) >= 0)
+		return PyUnicode_FromString(self->req->path);
+
+	Py_RETURN_NONE;
 }
 
 static PyObject *
 HttpRequest_agent(HttpRequest* self, void *closure)
 {
-	return PyUnicode_FromString(self->req->agent);
+	if (self->req->agent != NULL && strlen(self->req->agent) >= 0)
+		return PyUnicode_FromString(self->req->agent);
+
+	Py_RETURN_NONE;
 }
 
 static PyObject *

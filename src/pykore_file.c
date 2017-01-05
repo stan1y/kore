@@ -31,13 +31,19 @@ typedef struct {
 static PyObject *
 HttpFile_name(HttpFile* self, void *closure)
 {
-	return PyUnicode_FromString(self->file->name);
+	if (self->file->name != NULL && strlen(self->file->name) >= 0)
+		return PyUnicode_FromString(self->file->name);
+
+	Py_RETURN_NONE;
 }
 
 static PyObject *
 HttpFile_filename(HttpFile* self, void *closure)
 {
-	return PyUnicode_FromString(self->file->filename);
+	if (self->file->filename != NULL && strlen(self->file->filename) >= 0)
+		return PyUnicode_FromString(self->file->filename);
+
+	Py_RETURN_NONE;
 }
 
 static PyObject *

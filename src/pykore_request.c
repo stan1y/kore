@@ -55,19 +55,23 @@ HttpRequest_method(HttpRequest* self, void *closure)
 static PyObject *
 HttpRequest_body(HttpRequest* self, void *closure)
 {
-	PyObject *body;
-	struct kore_buf *buf;
-	int r;
+	PyObject		*body;
+	struct kore_buf	*buf;
+	char			 data[BUFSIZ];
+	int				 r;
 
 	buf = kore_buf_alloc(http_body_max);
-	r = http_body_read(self->req, buf, sizeof(buf));
-
-	if (r == -1) {
-		kore_log(LOG_ERR, "%s: failed to read body",
-						  __FUNCTION__);
-
-		PyErr_SetString(PyExc_TypeError, "Failed to read request body");
-		return NULL;
+	for (;;) {
+		r = http_body_read(self->req, data, sizeof(data));
+		if (r == -1) {
+			kore_buf_free(buf);
+			/* report error as python exception */
+			PyErr_SetString(PyExc_TypeError, "Failed to read request body");
+			return NULL;
+		}
+		if (r == 0)
+			break;
+		kore_buf_append(buf, data, r);
 	}
 
 	body = PyBytes_FromString(kore_buf_stringify(buf, NULL));

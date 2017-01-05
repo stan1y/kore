@@ -449,7 +449,7 @@ kore_worker_wait(int final)
 			kore_log(LOG_NOTICE,
 			    "worker %d (pid: %d) (hdlr: %s) gone",
 			    kw->id, kw->pid,
-			    (kw->active_hdlr != NULL) ? kw->active_hdlr->func :
+			    (kw->active_hdlr != NULL) ? kw->active_hdlr->fname :
 			    "none");
 
 #if !defined(KORE_NO_TLS)
@@ -471,7 +471,7 @@ kore_worker_wait(int final)
 				kw->active_hdlr->errors++;
 				kore_log(LOG_NOTICE,
 				    "hdlr %s has caused %d error(s)",
-				    kw->active_hdlr->func,
+				    kw->active_hdlr->fname,
 				    kw->active_hdlr->errors);
 			}
 

@@ -19,6 +19,10 @@ def method_name(mth):
 		return 'HEAD'
 	return 'UNKNOWN'
 
+def python_minimal(req):
+	req.response(200, b'')
+	return kore.RESULT_OK
+
 def hello_world(req):
 	print('python -> on_request: %s' % repr(req))
 	print('\tagent: %s' % req.agent)

@@ -961,8 +961,9 @@ http_populate_post(struct http_request *req)
 	char			data[BUFSIZ];
 	char			*args[HTTP_MAX_QUERY_ARGS], *val[3], *string;
 
+	count = 0;
 	if (req->method != HTTP_METHOD_POST)
-		return 0;
+		return count;
 
 	if (req->http_body != NULL) {
 		body = NULL;
@@ -1003,8 +1004,9 @@ http_populate_get(struct http_request *req)
 	int		i, v;
 	char		*query, *args[HTTP_MAX_QUERY_ARGS], *val[3];
 
+	count = 0;
 	if (req->method != HTTP_METHOD_GET || req->query_string == NULL)
-		return 0;
+		return count;
 
 	query = kore_strdup(req->query_string);
 	v = kore_split_string(query, "&", args, HTTP_MAX_QUERY_ARGS);
@@ -1023,32 +1025,33 @@ http_populate_get(struct http_request *req)
 size_t
 http_populate_multipart_form(struct http_request *req)
 {
-	size_t		count = 0;
+	size_t		count;
 	int			h, blen;
 	struct kore_buf		*in, *out;
 	char			*type, *val, *args[3];
 	char			boundary[HTTP_BOUNDARY_MAX];
 
+	count = 0;
 	if (req->method != HTTP_METHOD_POST)
-		return 0;
+		return count;
 
 	if (!http_request_header(req, "content-type", &type))
-		return 0;
+		return count;
 
 	h = kore_split_string(type, ";", args, 3);
 	if (h != 2)
-		return 0;
+		return count;
 
 	if (strcasecmp(args[0], "multipart/form-data"))
-		return 0;
+		return count;
 
 	if ((val = strchr(args[1], '=')) == NULL)
-		return 0;
+		return count;
 
 	val++;
 	blen = snprintf(boundary, sizeof(boundary), "--%s", val);
 	if (blen == -1 || (size_t)blen >= sizeof(boundary))
-		return 0;
+		return count;
 
 	in = kore_buf_alloc(128);
 	out = kore_buf_alloc(128);

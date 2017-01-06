@@ -31,7 +31,7 @@ typedef struct {
 static PyObject *
 HttpRequest_host(HttpRequest* self, void *closure)
 {
-	if (self->req->host != NULL && strlen(self->req->host) >= 0)
+	if (self->req->host != NULL)
 		return PyUnicode_FromString(self->req->host);
 
 	Py_RETURN_NONE;
@@ -40,7 +40,7 @@ HttpRequest_host(HttpRequest* self, void *closure)
 static PyObject *
 HttpRequest_path(HttpRequest* self, void *closure)
 {
-	if (self->req->path != NULL && strlen(self->req->path) >= 0)
+	if (self->req->path != NULL)
 		return PyUnicode_FromString(self->req->path);
 
 	Py_RETURN_NONE;
@@ -49,7 +49,7 @@ HttpRequest_path(HttpRequest* self, void *closure)
 static PyObject *
 HttpRequest_agent(HttpRequest* self, void *closure)
 {
-	if (self->req->agent != NULL && strlen(self->req->agent) >= 0)
+	if (self->req->agent != NULL)
 		return PyUnicode_FromString(self->req->agent);
 
 	Py_RETURN_NONE;

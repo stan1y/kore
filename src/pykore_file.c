@@ -31,7 +31,7 @@ typedef struct {
 static PyObject *
 HttpFile_name(HttpFile* self, void *closure)
 {
-	if (self->file->name != NULL && strlen(self->file->name) >= 0)
+	if (self->file->name != NULL)
 		return PyUnicode_FromString(self->file->name);
 
 	Py_RETURN_NONE;
@@ -40,7 +40,7 @@ HttpFile_name(HttpFile* self, void *closure)
 static PyObject *
 HttpFile_filename(HttpFile* self, void *closure)
 {
-	if (self->file->filename != NULL && strlen(self->file->filename) >= 0)
+	if (self->file->filename != NULL)
 		return PyUnicode_FromString(self->file->filename);
 
 	Py_RETURN_NONE;

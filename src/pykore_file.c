@@ -24,15 +24,15 @@
 
 typedef struct {
 	PyObject_HEAD
-	struct http_file *file;
+	struct http_file *op_file;
 
 } HttpFile;
 
 static PyObject *
 HttpFile_name(HttpFile* self, void *closure)
 {
-	if (self->file->name != NULL)
-		return PyUnicode_FromString(self->file->name);
+	if (self->op_file->name != NULL)
+		return PyUnicode_FromString(self->op_file->name);
 
 	Py_RETURN_NONE;
 }
@@ -40,8 +40,8 @@ HttpFile_name(HttpFile* self, void *closure)
 static PyObject *
 HttpFile_filename(HttpFile* self, void *closure)
 {
-	if (self->file->filename != NULL)
-		return PyUnicode_FromString(self->file->filename);
+	if (self->op_file->filename != NULL)
+		return PyUnicode_FromString(self->op_file->filename);
 
 	Py_RETURN_NONE;
 }
@@ -49,19 +49,19 @@ HttpFile_filename(HttpFile* self, void *closure)
 static PyObject *
 HttpFile_position(HttpFile* self, void *closure)
 {
-	return PyLong_FromSize_t(self->file->position);
+	return PyLong_FromSize_t(self->op_file->position);
 }
 
 static PyObject *
 HttpFile_offset(HttpFile* self, void *closure)
 {
-	return PyLong_FromSize_t(self->file->offset);
+	return PyLong_FromSize_t(self->op_file->offset);
 }
 
 static PyObject *
 HttpFile_length(HttpFile* self, void *closure)
 {
-	return PyLong_FromSize_t(self->file->length);
+	return PyLong_FromSize_t(self->op_file->length);
 }
 
 static PyGetSetDef HttpFile_getset[] = {
@@ -93,7 +93,36 @@ static PyGetSetDef HttpFile_getset[] = {
 	{NULL}
 };
 
+static PyObject*
+HttpFile_read(HttpFile *self, PyObject *args)
+{
+	Py_ssize_t	 n;
+	char		*buf;
+	PyObject	*pybuf;
+
+	if (!PyArg_ParseTuple(args, "n", &n))
+		return NULL;
+
+	buf = kore_malloc(n);
+	if (!http_file_read(self->op_file, buf, n)) {
+		kore_free(buf);
+		/* report error as python exception */
+		PyErr_SetString(PyExc_IOError, "Failed to read file contents.");
+		return NULL;
+	}
+
+	pybuf = PyBytes_FromString(buf);
+	kore_free(buf);
+
+	return pybuf;
+}
+
 static PyMethodDef HttpFile_methods[] = {
+	{"read",
+	 (PyCFunction)HttpFile_read,
+	 METH_VARARGS, 
+	 "Read number of bytes from this file."},
+
 	{NULL}
 };
 
@@ -175,6 +204,6 @@ pykore_httpfile_create(struct http_file *file)
 		return NULL;
 	}
 
-	pyfile->file = file;
+	pyfile->op_file = file;
 	return (PyObject*)pyfile;
 }

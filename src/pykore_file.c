@@ -117,11 +117,23 @@ HttpFile_read(HttpFile *self, PyObject *args)
 	return pybuf;
 }
 
+static PyObject*
+HttpFile_rewind(HttpFile *self)
+{
+	http_file_rewind(self->op_file);
+	return (PyObject *)self;
+}
+
 static PyMethodDef HttpFile_methods[] = {
 	{"read",
 	 (PyCFunction)HttpFile_read,
 	 METH_VARARGS, 
 	 "Read number of bytes from this file."},
+
+	{"rewind",
+	 (PyCFunction)HttpFile_rewind,
+	 METH_NOARGS, 
+	 "Reset state of this file."},
 
 	{NULL}
 };

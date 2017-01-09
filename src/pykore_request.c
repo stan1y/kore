@@ -30,8 +30,31 @@ typedef struct {
 
 } HttpRequest;
 
+static void
+HttpRequest_dealloc(HttpRequest *self)
+{
+	if (self->op_body != NULL && self->op_body != Py_None){
+		Py_DECREF(self->op_body);
+	}
+}
+
 static PyObject *
-HttpRequest_host(HttpRequest* self, void *closure)
+HttpRequest_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    HttpRequest *self;
+
+    self = (HttpRequest *)type->tp_alloc(type, 0);
+    if (self == NULL)
+    	return NULL;
+    
+    self->op_req = NULL;
+    self->op_body = NULL;
+
+    return (PyObject *)self;
+}
+
+static PyObject *
+HttpRequest_host(HttpRequest *self, void *closure)
 {
 	if (self->op_req->host != NULL)
 		return PyUnicode_FromString(self->op_req->host);
@@ -40,7 +63,7 @@ HttpRequest_host(HttpRequest* self, void *closure)
 }
 
 static PyObject *
-HttpRequest_path(HttpRequest* self, void *closure)
+HttpRequest_path(HttpRequest *self, void *closure)
 {
 	if (self->op_req->path != NULL)
 		return PyUnicode_FromString(self->op_req->path);
@@ -49,7 +72,7 @@ HttpRequest_path(HttpRequest* self, void *closure)
 }
 
 static PyObject *
-HttpRequest_agent(HttpRequest* self, void *closure)
+HttpRequest_agent(HttpRequest *self, void *closure)
 {
 	if (self->op_req->agent != NULL)
 		return PyUnicode_FromString(self->op_req->agent);
@@ -89,14 +112,22 @@ HttpRequest_body(HttpRequest* self, void *closure)
 		kore_buf_append(buf, data, r);
 	}
 
+	if (buf->offset == 0) {
+		kore_buf_free(buf);
+		/* Empty body stored as ref to Py_None */
+		self->op_body = Py_None;
+		Py_INCREF(self->op_body);
+		return self->op_body;
+	}
+
 	self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));
 	kore_buf_free(buf);
-
+	Py_INCREF(self->op_body);
 	return self->op_body;
 }
 
 static PyObject *
-HttpRequest_bodyfd(HttpRequest* self, void *closure)
+HttpRequest_bodyfd(HttpRequest *self, void *closure)
 {
 	return PyLong_FromLong(self->op_req->http_body_fd);
 }
@@ -320,7 +351,7 @@ static PyTypeObject HttpRequestType = {
     "kore.HttpRequest",             /* tp_name */
     sizeof(HttpRequest),             /* tp_basicsize */
     0,                         /* tp_itemsize */
-    0, /* tp_dealloc */
+    (destructor)HttpRequest_dealloc, /* tp_dealloc */
     0,                         /* tp_print */
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
@@ -354,7 +385,7 @@ static PyTypeObject HttpRequestType = {
     0,                         /* tp_dictoffset */
     0,      /* tp_init */
     0,                         /* tp_alloc */
-    PyType_GenericNew,         /* tp_new */
+    HttpRequest_new,         /* tp_new */
 };
 
 void
@@ -391,6 +422,7 @@ pykore_httpreq_create(struct http_request *req)
 	}
 
 	pyreq->op_req = req;
+	pyreq->op_body = NULL;
 	Py_INCREF(pyreq);
 
 	return (PyObject*)pyreq;

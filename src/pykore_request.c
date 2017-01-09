@@ -113,9 +113,8 @@ HttpRequest_body(HttpRequest* self, void *closure)
 	}
 
 	if (buf->offset == 0) {
-		/* Empty body stored as ref to Py_None */
-		self->op_body = Py_None;
-		Py_INCREF(self->op_body);
+		/* Empty body -> Empty collection of bytes */
+		self->op_body = (PyObject *)PyBytes_FromString("");
 	}
 	else {
 		self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));

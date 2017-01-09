@@ -118,6 +118,41 @@ HttpFile_read(HttpFile *self, PyObject *args)
 }
 
 static PyObject*
+HttpFile_readall(HttpFile *self)
+{
+	int					 r;
+	char				 data[BUFSIZ];
+	struct kore_buf		*buf;
+	PyObject			*pybuf;
+
+	http_file_rewind(self->op_file);
+	buf = kore_buf_alloc(http_body_max);
+	for (;;) {
+		r = http_file_read(self->op_file, data, sizeof(data));
+		if (r == -1) {
+			kore_buf_free(buf);
+			/* report error as python exception */
+			PyErr_SetString(PyExc_IOError, "Failed to read file content");
+			return NULL;
+		}
+		if (r == 0)
+			break;
+		kore_buf_append(buf, data, r);
+	}
+
+	if (buf->offset == 0) {
+		/* Empty body -> Empty collection of bytes */
+		pybuf = PyBytes_FromString("");
+	}
+	else {
+		pybuf = PyBytes_FromString(kore_buf_stringify(buf, NULL));
+	}
+
+	kore_buf_free(buf);
+	return pybuf;
+}
+
+static PyObject*
 HttpFile_rewind(HttpFile *self)
 {
 	http_file_rewind(self->op_file);
@@ -128,7 +163,12 @@ static PyMethodDef HttpFile_methods[] = {
 	{"read",
 	 (PyCFunction)HttpFile_read,
 	 METH_VARARGS, 
-	 "Read number of bytes from this file."},
+	 "Read given number of bytes from this file."},
+
+	{"readall",
+	 (PyCFunction)HttpFile_readall,
+	 METH_NOARGS, 
+	 "Read everything from this file."},
 
 	{"rewind",
 	 (PyCFunction)HttpFile_rewind,

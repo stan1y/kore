@@ -4,7 +4,6 @@ import urllib.parse
 
 def on_load(state):
 	print('python -> on_load: %s' % ('loading' if state == kore.MODULE_LOAD else 'unloading'))
-	return kore.RESULT_OK
 
 def method_name(mth):
 	if mth == kore.METHOD_GET:
@@ -21,7 +20,6 @@ def method_name(mth):
 
 def python_minimal(req):
 	req.response(200, b'')
-	return kore.RESULT_OK
 
 def hello_world(req):
 	print('python -> on_request: %s' % repr(req))
@@ -35,7 +33,6 @@ def hello_world(req):
 
 	body = 'Hello World, time is %s' % datetime.datetime.now().isoformat()
 	req.response(200, body.encode('utf-8'))
-	return kore.RESULT_OK
 
 
 upload_html = '''
@@ -89,5 +86,3 @@ def handle_file_upload(req):
 			req.response(200, answer.encode('utf-8'))
 		else:
 			req.response(400, "No file received".encode('utf-8'))
-
-	return kore.RESULT_OK

@@ -24,15 +24,17 @@
 
 typedef struct {
 	PyObject_HEAD
-	struct http_request *req;
+
+	struct http_request *op_req;
+	PyObject			*op_body;
 
 } HttpRequest;
 
 static PyObject *
 HttpRequest_host(HttpRequest* self, void *closure)
 {
-	if (self->req->host != NULL)
-		return PyUnicode_FromString(self->req->host);
+	if (self->op_req->host != NULL)
+		return PyUnicode_FromString(self->op_req->host);
 
 	Py_RETURN_NONE;
 }
@@ -40,8 +42,8 @@ HttpRequest_host(HttpRequest* self, void *closure)
 static PyObject *
 HttpRequest_path(HttpRequest* self, void *closure)
 {
-	if (self->req->path != NULL)
-		return PyUnicode_FromString(self->req->path);
+	if (self->op_req->path != NULL)
+		return PyUnicode_FromString(self->op_req->path);
 
 	Py_RETURN_NONE;
 }
@@ -49,8 +51,8 @@ HttpRequest_path(HttpRequest* self, void *closure)
 static PyObject *
 HttpRequest_agent(HttpRequest* self, void *closure)
 {
-	if (self->req->agent != NULL)
-		return PyUnicode_FromString(self->req->agent);
+	if (self->op_req->agent != NULL)
+		return PyUnicode_FromString(self->op_req->agent);
 
 	Py_RETURN_NONE;
 }
@@ -58,20 +60,24 @@ HttpRequest_agent(HttpRequest* self, void *closure)
 static PyObject *
 HttpRequest_method(HttpRequest* self, void *closure)
 {
-	return PyLong_FromUnsignedLong(self->req->method);
+	return PyLong_FromUnsignedLong(self->op_req->method);
 }
 
 static PyObject *
 HttpRequest_body(HttpRequest* self, void *closure)
 {
-	PyObject		*body;
 	struct kore_buf	*buf;
 	char			 data[BUFSIZ];
 	int				 r;
 
+	if (self->op_body != NULL) {
+		Py_INCREF(self->op_body);
+		return self->op_body;
+	}
+
 	buf = kore_buf_alloc(http_body_max);
 	for (;;) {
-		r = http_body_read(self->req, data, sizeof(data));
+		r = http_body_read(self->op_req, data, sizeof(data));
 		if (r == -1) {
 			kore_buf_free(buf);
 			/* report error as python exception */
@@ -83,16 +89,16 @@ HttpRequest_body(HttpRequest* self, void *closure)
 		kore_buf_append(buf, data, r);
 	}
 
-	body = PyBytes_FromString(kore_buf_stringify(buf, NULL));
+	self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));
 	kore_buf_free(buf);
 
-	return body;
+	return self->op_body;
 }
 
 static PyObject *
 HttpRequest_bodyfd(HttpRequest* self, void *closure)
 {
-	return PyLong_FromLong(self->req->http_body_fd);
+	return PyLong_FromLong(self->op_req->http_body_fd);
 }
 
 static PyGetSetDef HttpRequest_getset[] = {
@@ -132,22 +138,28 @@ static PyGetSetDef HttpRequest_getset[] = {
 static PyObject *
 HttpRequest_populate_get(HttpRequest *self)
 {
-	http_populate_get(self->req);
-	Py_RETURN_NONE;
+	size_t	count;
+
+	count = http_populate_get(self->op_req);
+	return PyLong_FromSize_t(count);
 }
 
 static PyObject *
 HttpRequest_populate_post(HttpRequest *self)
 {
-	http_populate_post(self->req);
-	Py_RETURN_NONE;
+	size_t	count;
+	
+	count = http_populate_post(self->op_req);
+	return PyLong_FromSize_t(count);
 }
 
 static PyObject *
 HttpRequest_populate_multipart_form(HttpRequest *self)
 {
-	http_populate_multipart_form(self->req);
-	Py_RETURN_NONE;
+	size_t count;
+
+	count = http_populate_multipart_form(self->op_req);
+	return PyLong_FromSize_t(count);
 }
 
 static PyObject *
@@ -159,7 +171,7 @@ HttpRequest_get_string(HttpRequest *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &name))
 		return NULL;
 
-	if (!http_argument_get_string(self->req, name, &val)) {
+	if (!http_argument_get_string(self->op_req, name, &val)) {
 		Py_RETURN_NONE;
 	}
 
@@ -175,7 +187,7 @@ HttpRequest_get_int(HttpRequest *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &name))
 		return NULL;
 
-	if (!http_argument_get_int64(self->req, name, &val)) {
+	if (!http_argument_get_int64(self->op_req, name, &val)) {
 		Py_RETURN_NONE;
 	}
 
@@ -191,7 +203,7 @@ HttpRequest_get_uint(HttpRequest *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &name))
 		return NULL;
 
-	if (!http_argument_get_uint64(self->req, name, &val)) {
+	if (!http_argument_get_uint64(self->op_req, name, &val)) {
 		Py_RETURN_NONE;
 	}
 
@@ -207,7 +219,7 @@ HttpRequest_get_file(HttpRequest *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &name))
 		return NULL;
 
-	file = http_file_lookup(self->req, name);
+	file = http_file_lookup(self->op_req, name);
 	if (file == NULL)
 		Py_RETURN_NONE;
 	
@@ -223,7 +235,7 @@ HttpRequest_response_header(HttpRequest *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "ss", &header, &value))
 		return NULL;
 
-	http_response_header(self->req, header, value);
+	http_response_header(self->op_req, header, value);
 	return (PyObject*)self;
 }
 
@@ -237,7 +249,7 @@ HttpRequest_response(HttpRequest *self, PyObject *args)
 		return NULL;
 
 	http_response(
-		self->req,
+		self->op_req,
 		code,
 		body.buf,
 		body.len);
@@ -297,7 +309,7 @@ static PyMethodDef HttpRequest_methods[] = {
 
 static PyMemberDef HttpRequest_members[] = {
 
-	{"req", T_INT, offsetof(HttpRequest, req), 0,
+	{"req", T_INT, offsetof(HttpRequest, op_req), 0,
 	 "Raw struct http_request object pointer"},
 
 	{NULL}
@@ -378,7 +390,7 @@ pykore_httpreq_create(struct http_request *req)
 		return NULL;
 	}
 
-	pyreq->req = req;
+	pyreq->op_req = req;
 	Py_INCREF(pyreq);
 
 	return (PyObject*)pyreq;

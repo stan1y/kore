@@ -81,7 +81,7 @@ HttpRequest_body(HttpRequest* self, void *closure)
 		if (r == -1) {
 			kore_buf_free(buf);
 			/* report error as python exception */
-			PyErr_SetString(PyExc_TypeError, "Failed to read request body");
+			PyErr_SetString(PyExc_IOError, "Failed to read request body");
 			return NULL;
 		}
 		if (r == 0)

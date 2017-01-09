@@ -113,15 +113,15 @@ HttpRequest_body(HttpRequest* self, void *closure)
 	}
 
 	if (buf->offset == 0) {
-		kore_buf_free(buf);
 		/* Empty body stored as ref to Py_None */
 		self->op_body = Py_None;
 		Py_INCREF(self->op_body);
-		return self->op_body;
 	}
-
-	self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));
+	else {
+		self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));
+	}
 	kore_buf_free(buf);
+	
 	Py_INCREF(self->op_body);
 	return self->op_body;
 }

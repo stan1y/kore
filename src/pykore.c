@@ -197,10 +197,10 @@ pykore_getclb(PyObject *pymod, const char* fname)
 static int
 pykore_returncall(PyObject *ret)
 {
-	int		rc;
+	int		rc = KORE_RESULT_OK;
 
-	rc = KORE_RESULT_ERROR;
 	if (ret == NULL) {
+		rc = KORE_RESULT_ERROR;
 		if (PyErr_Occurred())
 			PyErr_Print();
 		

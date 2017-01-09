@@ -91,7 +91,6 @@ int
 kore_python_init(void)
 {
 	wchar_t *whome;
-	//PyObject *kore_module, *kore, *sysmodules;
 
 	if (python_home != NULL && strlen(python_home) > 0) {
 		kore_log(LOG_DEBUG, "python home is '%s'", python_home);
@@ -104,35 +103,6 @@ kore_python_init(void)
 	PyImport_AppendInittab("kore", &PyInit_kore);
 	Py_Initialize();
 	
-	/*kore_module = PyInit_kore();
-	if (kore_module == NULL) {
-		if (PyErr_Occurred())
-			PyErr_Print();
-
-		kore_log(LOG_ERR, "%s: failed to init python interface",
-						  __FUNCTION__);
-		return (KORE_RESULT_ERROR);
-	}
-
-	sysmodules = PySys_GetObject("modules");
-	if (sysmodules == NULL) {
-		Py_DECREF(kore_module);
-
-		if (PyErr_Occurred())
-			PyErr_Print();
-
-		kore_log(LOG_ERR, "%s: failed to setup python interface",
-						  __FUNCTION__);
-		return (KORE_RESULT_ERROR);	
-	}
-
-	kore = PyUnicode_FromString("kore");
-	PyDict_SetItem(sysmodules, kore, kore_module);
-	Py_DECREF(kore);
-	Py_DECREF(kore_module);
-	Py_DECREF(sysmodules);
-	*/
-	kore_log(LOG_NOTICE, "initialized python runtime");
 	return (KORE_RESULT_OK);
 }
 
@@ -208,7 +178,7 @@ pykore_fload(char *path)
 PyObject *
 pykore_getclb(PyObject *pymod, const char* fname)
 {
-	PyObject *attr;
+	PyObject	*attr;
 
 	attr = PyObject_GetAttrString(pymod, fname);
 	if (attr == NULL) {
@@ -224,10 +194,31 @@ pykore_getclb(PyObject *pymod, const char* fname)
 	return attr;
 }
 
+static int
+pykore_returncall(PyObject *ret)
+{
+	int		rc;
+
+	rc = KORE_RESULT_ERROR;
+	if (ret == NULL) {
+		if (PyErr_Occurred())
+			PyErr_Print();
+		
+		return rc;
+	}
+
+	if (PyLong_Check(ret)) {
+		rc = PyLong_AsLong(ret);
+	}
+	Py_DECREF(ret);
+	
+	return rc;
+}
+
 int
 pykore_handle_httpreq(struct http_request *req)
 {
-	PyObject *pyreq, *args, *kwargs, *ret;
+	PyObject	*pyreq, *args, *kwargs, *ret;
 
 	pyreq = pykore_httpreq_create(req);
 	if (pyreq == NULL) {
@@ -244,22 +235,13 @@ pykore_handle_httpreq(struct http_request *req)
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 
-	if (ret == NULL) {
-		if (PyErr_Occurred())
-			PyErr_Print();
-		
-		return (KORE_RESULT_ERROR);
-	}
-
-	Py_DECREF(ret);
-	return KORE_RESULT_OK;
+	return pykore_returncall(ret);
 }
 
 int
 pykore_handle_onload(struct kore_module *module, int action)
 {
-	PyObject *pyact, *args, *kwargs, *ret;
-	int rc;
+	PyObject	*pyact, *args, *kwargs, *ret;
 
 	pyact = PyLong_FromLong(action);
 	kwargs = PyDict_New();
@@ -272,21 +254,5 @@ pykore_handle_onload(struct kore_module *module, int action)
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 
-	if (ret == NULL) {
-		if (PyErr_Occurred())
-			PyErr_Print();
-		
-		return (KORE_RESULT_ERROR);
-	}
-
-	if (!PyLong_Check(ret)) {
-		kore_log(LOG_ERR, "%s: unexpected value type returned.",
-			              __FUNCTION__);
-		Py_DECREF(ret);
-		return KORE_RESULT_ERROR;
-	}
-
-	rc = PyLong_AsLong(ret);
-	Py_DECREF(ret);
-	return rc;
+	return pykore_returncall(ret);
 }

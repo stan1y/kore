@@ -103,7 +103,6 @@ kore_module_load(const char *path, const char *onload)
 	}
 #endif
 
-	/* FIXME: Add python support */
 	if (onload != NULL) {
 		module->onload = kore_strdup(onload);
 		module->ocb = kore_module_getfunc(module, onload);

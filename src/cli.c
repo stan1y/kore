@@ -134,6 +134,9 @@ static void		cli_register_kore_file(char *, struct dirent *);
 static void		cli_register_source_file(char *, struct dirent *);
 static void		cli_file_create(const char *, const char *, size_t);
 static int		cli_file_requires_build(struct stat *, const char *);
+static int		cli_file_should_build(const char *);
+static int		cli_file_iscpp(const char *);
+static int		cli_file_isc(const char *);
 static void		cli_find_files(const char *,
 			    void (*cb)(char *, struct dirent *));
 static void		cli_add_source_file(char *, char *, char *,
@@ -297,6 +300,7 @@ static struct mime_list		mime_types;
 static struct cfile_list	source_files;
 static struct buildopt_list	build_options;
 static int			source_files_count;
+static int			c_files_count;
 static int			cxx_files_count;
 static struct cmd		*command = NULL;
 static int			cflags_count = 0;
@@ -466,6 +470,7 @@ cli_build(int argc, char **argv)
 	}
 
 	source_files_count = 0;
+	c_files_count = 0;
 	cxx_files_count = 0;
 	TAILQ_INIT(&source_files);
 	TAILQ_INIT(&build_options);
@@ -547,8 +552,9 @@ cli_build(int argc, char **argv)
 
 	requires_relink = 0;
 	TAILQ_FOREACH(cf, &source_files, list) {
-		if (cf->build == BUILD_NOBUILD)
+		if (cf->build == BUILD_NOBUILD) {
 			continue;
+		}
 
 		printf("compiling %s\n", cf->name);
 		cli_spawn_proc(cli_compile_source_file, cf);
@@ -580,7 +586,7 @@ cli_build(int argc, char **argv)
 		(void)cli_vasprintf(&sofile, "%s.so", appl);
 	}
 
-	if (!cli_file_exists(sofile))
+	if (!cli_file_exists(sofile) && (cxx_files_count > 0 || c_files_count > 0))
 		requires_relink++;
 	free(sofile);
 
@@ -701,6 +707,32 @@ cli_file_requires_build(struct stat *fst, const char *opath)
 	}
 
 	return (fst->st_mtime != ost.st_mtime);
+}
+
+static int
+cli_file_should_build(const char *opath)
+{
+	return (cli_file_iscpp(opath) || cli_file_isc(opath));
+}
+
+static int
+cli_file_iscpp(const char *opath)
+{
+	if (strstr(opath, ".cpp")	!= NULL	||
+		strstr(opath, ".cxx")	!= NULL	||
+		strstr(opath, ".cc")	!= NULL)
+		return KORE_RESULT_OK; /*true*/
+
+	return KORE_RESULT_ERROR;	 
+}
+
+static int
+cli_file_isc(const char *opath)
+{
+	if (strstr(opath, ".c")		!= NULL)
+		return KORE_RESULT_OK; /*true*/
+
+	return KORE_RESULT_ERROR;
 }
 
 static int
@@ -968,16 +1000,15 @@ cli_register_source_file(char *fpath, struct dirent *dp)
 	if (stat(fpath, &st) == -1)
 		cli_fatal("stat(%s): %s", fpath, errno_s);
 
-	if (!strcmp(ext, ".cpp"))
-		cxx_files_count++;
-
 	(void)cli_vasprintf(&opath, "%s/.objs/%s.o", rootdir, dp->d_name);
-	if (!cli_file_requires_build(&st, opath)) {
+	if (!(cli_file_requires_build(&st, opath) && cli_file_should_build(opath))) {
 		build = BUILD_NOBUILD;
-	} else if (!strcmp(ext, ".cpp")) {
+	} else if (cli_file_iscpp(opath)) {
 		build = BUILD_CXX;
+		cxx_files_count++;
 	} else {
 		build = BUILD_C;
+		c_files_count++;
 	}
 
 	cli_add_source_file(dp->d_name, fpath, opath, &st, build);

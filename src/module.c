@@ -85,24 +85,24 @@ kore_module_load(const char *path, const char *onload)
 	module->path = NULL;
 	module->mtime = 0;
 #endif
-
-	/* module can be of different nature */
-	if (strstr(module->path, ".so") != NULL) {
-		module->runtime = RUNTIME_TYPE_NATIVE;
-		module->handle = dlopen(module->path, RTLD_NOW | RTLD_GLOBAL);
-		if (module->handle == NULL)
-			fatal("%s: %s", path, dlerror());	
-	}
+	if (path != NULL) {
+		/* module can be of different nature */
+		if (strstr(module->path, ".so") != NULL) {
+			module->runtime = RUNTIME_TYPE_NATIVE;
+			module->handle = dlopen(module->path, RTLD_NOW | RTLD_GLOBAL);
+			if (module->handle == NULL)
+				fatal("%s: %s", path, dlerror());	
+		}
 
 #if defined(KORE_USE_PYTHON)
-	if (strstr(module->path, ".py") != NULL) {
-		module->runtime = RUNTIME_TYPE_PYTHON;
-		module->handle = pykore_fload(module->path);
-		if (module->handle == NULL)
-			fatal("%s: %s", path, "failed to load python module");
-	}
+		if (strstr(module->path, ".py") != NULL) {
+			module->runtime = RUNTIME_TYPE_PYTHON;
+			module->handle = pykore_fload(module->path);
+			if (module->handle == NULL)
+				fatal("%s: %s", path, "failed to load python module");
+		}
 #endif
-
+	}
 	if (onload != NULL) {
 		module->onload = kore_strdup(onload);
 		module->ocb = kore_module_getfunc(module, onload);

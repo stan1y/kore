@@ -141,8 +141,9 @@ HttpFile_readall(HttpFile *self)
 	}
 
 	if (buf->offset == 0) {
-		/* Empty body -> Empty collection of bytes */
-		pybuf = PyBytes_FromString("");
+		/* Empty read -> None */
+		pybuf = Py_None;
+		Py_INCREF(pybuf);
 	}
 	else {
 		pybuf = PyBytes_FromString(kore_buf_stringify(buf, NULL));

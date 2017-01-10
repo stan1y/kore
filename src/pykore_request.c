@@ -118,8 +118,9 @@ HttpRequest_body(HttpRequest* self, void *closure)
 	}
 
 	if (buf->offset == 0) {
-		/* Empty body -> Empty collection of bytes */
-		self->op_body = (PyObject *)PyBytes_FromString("");
+		/* Empty body -> None */
+		self->op_body = Py_None;
+		Py_INCREF(self->op_body);
 	}
 	else {
 		self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));

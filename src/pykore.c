@@ -194,7 +194,7 @@ pykore_getclb(PyObject *pymod, const char* fname)
 	return attr;
 }
 
-static int
+int
 pykore_returncall(PyObject *ret)
 {
 	int		rc = KORE_RESULT_OK;

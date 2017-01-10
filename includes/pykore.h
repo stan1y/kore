@@ -41,6 +41,8 @@ int			 pykore_httpreq_check(PyObject *);
 void		 pykore_httpfile_register(PyObject* );
 PyObject	*pykore_httpfile_create(struct http_file *);
 int			 pykore_httpfile_check(PyObject *);
+int			 pykore_returncall(PyObject *);
+
 
 PyMODINIT_FUNC
 PyInit_kore(void);

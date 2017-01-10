@@ -30,6 +30,11 @@ typedef struct {
 
 } HttpRequest;
 
+struct pykore_callback {
+	PyObject	*op_req;
+	PyObject	*op_clb;
+};
+
 static void
 HttpRequest_dealloc(HttpRequest *self)
 {
@@ -256,6 +261,20 @@ HttpRequest_get_file(HttpRequest *self, PyObject *args)
 	return pykore_httpfile_create(file);
 }
 
+static PyObject *
+HttpRequest_get_header(HttpRequest *self, PyObject *args)
+{
+	const char	*header;
+	char		*value;
+
+	if (!PyArg_ParseTuple(args, "s", &header))
+		return NULL;
+
+	if (!http_request_header(self->op_req, header, &value))
+		Py_RETURN_NONE;
+
+	return PyUnicode_FromString(value);
+}
 
 static PyObject*
 HttpRequest_response_header(HttpRequest *self, PyObject *args)
@@ -269,11 +288,11 @@ HttpRequest_response_header(HttpRequest *self, PyObject *args)
 	return (PyObject*)self;
 }
 
-static PyObject*
+static PyObject *
 HttpRequest_response(HttpRequest *self, PyObject *args)
 {
-	unsigned int code;
-	Py_buffer body;
+	unsigned int	code;
+	Py_buffer		body;
 
 	if (!PyArg_ParseTuple(args, "Iy*", &code, &body))
 		return NULL;
@@ -287,7 +306,61 @@ HttpRequest_response(HttpRequest *self, PyObject *args)
 	return (PyObject*)self;
 }
 
+static int
+HttpRequest_stream_complete(struct netbuf *nb)
+{
+	struct pykore_callback	*clb;
+	PyObject				*args, *kwargs, *ret;
+
+	clb = (struct pykore_callback	*)nb->extra;
+
+	kwargs = PyDict_New();
+	args = PyTuple_New(1);
+	PyTuple_SetItem(args, 0, clb->op_req);
+
+	ret = PyObject_Call(clb->op_clb, args, kwargs);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	kore_free(clb);
+	return pykore_returncall(ret);
+}
+
+static PyObject *
+HttpRequest_response_stream(HttpRequest *self, PyObject *args)
+{
+	unsigned int			 code;
+	Py_buffer		 		 stream;
+	PyObject				*pyclb;
+	struct pykore_callback	*clb;
+
+	if (!PyArg_ParseTuple(args, "Iy*O", &code, &stream, &pyclb))
+		return NULL;
+
+	if (!PyCallable_Check(pyclb)) {
+		PyErr_SetString(PyExc_TypeError, "callback argument is not callable.");
+		return NULL;
+	}
+
+	clb = kore_malloc(sizeof(struct pykore_callback));
+	clb->op_req = (PyObject *)self;
+	clb->op_clb = pyclb;
+	http_response_stream(self->op_req,
+						 code,
+						 stream.buf,
+						 stream.len,
+						 HttpRequest_stream_complete,
+						 clb);
+
+	return (PyObject *)self;
+}
+
 static PyMethodDef HttpRequest_methods[] = {
+
+	{"get_header",
+	 (PyCFunction)HttpRequest_get_header,
+	 METH_VARARGS, 
+	 "Get request header by name"},
 
 	{"response_header",
 	 (PyCFunction)HttpRequest_response_header,
@@ -298,6 +371,11 @@ static PyMethodDef HttpRequest_methods[] = {
 	 (PyCFunction)HttpRequest_response,
 	 METH_VARARGS, 
 	 "Set response code and payload for this request"},
+
+	{"response_stream",
+	 (PyCFunction)HttpRequest_response_stream,
+	 METH_VARARGS, 
+	 "Set response code and stream data for this request"},
 	
 	{"populate_multipart_form",
 	 (PyCFunction)HttpRequest_populate_multipart_form,

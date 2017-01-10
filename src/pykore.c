@@ -98,7 +98,7 @@ kore_python_init(void)
 		Py_SetPythonHome(whome);
 		kore_free(whome);
 	}
-#if PY_MAJOR_VERSION >= 4
+#if PY_MINOR_VERSION >= 4
 	Py_SetStandardStreamEncoding("utf-8", "utf-8");
 #endif
 	PyImport_AppendInittab("kore", &PyInit_kore);

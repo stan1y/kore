@@ -14,6 +14,7 @@
 
 import os
 import sys
+import mmap
 
 import kore
 
@@ -131,7 +132,7 @@ video_html = '''
 
 <video class="video-js vjs-default-skin" width="640"
     height="240" controls preload="auto" data-setup='{"example_option":true}'>
-	<source src="/video.ogg" type="video/ogg">
+	<source src="/small.ogv" type="video/ogg">
 Your browser does not support the video tag.
 </video>
 
@@ -140,33 +141,57 @@ Your browser does not support the video tag.
 
 '''
 
-__videos__ = {}
+class Video(object):
+	__opened__ = {}
+
+	def __init__(self, path):
+		self.path = path
+		self.size = os.path.getsize(self.path)
+		self.fd = open(self.path, 'r+b')
+		self.data = mmap.mmap(self.fd.fileno(), 0)
+
+	def close(self):
+		self.data.close()
+		self.fd.close()
+
+	@classmethod
+	def clear(cls, v):
+		del cls.__opened__[v.path]
+		v.close()
+		print("Closed video: %s" % v.path)
+
+	@classmethod
+	def open(cls, path):
+		vpath = os.path.join('videos', path[1:])
+		if not os.path.exists(vpath):
+			print ("No such video file: %s" % vpath)
+			return None
+
+		v = Video(vpath)
+		cls.__opened__[v.path] = v
+		print("Opened video: %s" % v.path)
+		return v
+
+	@classmethod
+	def get(cls, path):
+		return cls.__opened__.get(os.path.join('videos', path[1:]))
+
 
 def video_page(req):
+	req.response_header('content-type', 'text/html')
 	req.response(200, video_html.encode('utf-8'))
 
 def video_open(path):
-	v = __videos__.get(path)
+	v = Video.get(path)
 	if v != None:
 		return v
-
-	fpath = os.path.join('videos', path) 
-	if os.path.exists(fpath):
-		v = open(fpath, 'rb')
-		__videos__[path] = v
-		printf("opened video file '%s'" % req.path)
-	else:
-		return None
-
-	return v
+	return Video.open(path)
 
 def video_finish(req):
-	v = __videos__.get(req.path)
+	v = Video.get(req.path)
 	if not v:
-		raise Exception("No video fd to close")
-	v.close()
-	del __videos__[req.path]
-	print("closed video file '%s'" % req.path)
+		raise Exception("No video file to close")
+	Video.clear(v)
 
 def parse_range_header(hdr_range):
 	sbytes, srange = hdr_range.split('=', 2)
@@ -174,52 +199,52 @@ def parse_range_header(hdr_range):
 		return 0, None
 
 	args = srange.split('-')
-	start = long(args[0])
+	start = int(args[0])
 	end = None
-	if len(args) > 1:
-		end = long(args[1])
+	if len(args) > 1 and len(args[1]) > 0:
+		end = int(args[1])
 
 	return start, end
 
 def video_stream(req):
 	v = video_open(req.path)
 	if not v:
-		req.response(404, "No such file to stream.")
+		print("Failed to open %s" % req.path)
+		req.response(404, "No such file to stream.".encode("utf-8"))
 		return
 	
-	sz = os.path.getsize(req.path)
 	ext = os.path.splitext(req.path)[1]
 	hdr_range = req.get_header('Range')
 	status = 200
 
+	print("Got Range = '%s'" % hdr_range)
 	if hdr_range:
 		if not '=' in hdr_range:
-			v.close()
-			del __videos__[req.path]
-
+			Video.clear(v)
 			req.response(416, b"")
 			return
+
 		start, end = parse_range_header(hdr_range)
+		if end == None:
+			end = v.size
 
-		if start > end or start > sz or end > sz:
-			v.close()
-			del __videos__[req.path]
-
+		if start > end or start > v.size or end > v.size:
+			Video.clear(v)
 			req.response(416, b"")
 			return
 
-		crng = "bytes %ld-%ld/%ld" % (start, end - 1, sz)
-		print("serving 206 content_range='%s'" % crng)
+		crng = "bytes %ld-%ld/%ld" % (start, end - 1, v.size)
+		print("Serving 206 Content-Range = '%s'" % crng)
+		req.response_header("content-range", crng);
 		status = 206
 
 	else:
 		start = 0
-		end = sz
+		end = v.size
 
 	req.response_header("content-type", "video/%s" % ext)
 	req.response_header("accept-ranges", "bytes")
-	
-	req.response_stream(status, b'', video_finish)
+	req.response_stream(status, v.data[start:end], video_finish)
 
 
 

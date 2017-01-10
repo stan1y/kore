@@ -71,6 +71,18 @@ those by setting a shell environment variable before running **_make_**.
 * NOHTTP=1 (compiles Kore without HTTP support)
 * NOOPT=1 (disable compiler optimizations)
 * JSONRPC=1 (compiles in JSONRPC support)
+* PYTHON=1 (compiles in Python runtime support)
+
+Python support (PyKore)
+----------------
+Kore provides optional support for Python runtime. Effectively you can
+write handler [functions and classes]() in Python and specify then in
+kore.conf of your application.
+
+The handler in python can perform exactly the same set of operation and
+produce a response using equivalents of Kore's set of `http_response_' 
+functions. Actual interface is documented in a [separate article](). 
+
 
 Example applications
 -----------------

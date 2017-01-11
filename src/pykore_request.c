@@ -30,7 +30,7 @@ typedef struct {
 
 } HttpRequest;
 
-struct pykore_callback {
+struct pykore_stream_clb {
 	PyObject	*op_req;
 	PyObject	*op_clb;
 };
@@ -310,10 +310,10 @@ HttpRequest_response(HttpRequest *self, PyObject *args)
 static int
 HttpRequest_stream_complete(struct netbuf *nb)
 {
-	struct pykore_callback	*clb;
-	PyObject				*args, *kwargs, *ret;
+	struct pykore_stream_clb	*clb;
+	PyObject					*args, *kwargs, *ret;
 
-	clb = (struct pykore_callback	*)nb->extra;
+	clb = (struct pykore_stream_clb	*)nb->extra;
 
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
@@ -330,20 +330,20 @@ HttpRequest_stream_complete(struct netbuf *nb)
 static PyObject *
 HttpRequest_response_stream(HttpRequest *self, PyObject *args)
 {
-	unsigned int			 code;
-	Py_buffer		 		 stream;
-	PyObject				*pyclb;
-	struct pykore_callback	*clb;
+	unsigned int				 code;
+	Py_buffer		 			 stream;
+	PyObject					*pyclb;
+	struct pykore_stream_clb	*clb;
 
 	if (!PyArg_ParseTuple(args, "Iy*O", &code, &stream, &pyclb))
 		return NULL;
 
 	if (!PyCallable_Check(pyclb)) {
-		PyErr_SetString(PyExc_TypeError, "callback argument is not callable.");
+		PyErr_SetString(PyExc_TypeError, "'callback' argument is not callable.");
 		return NULL;
 	}
 
-	clb = kore_malloc(sizeof(struct pykore_callback));
+	clb = kore_malloc(sizeof(struct pykore_stream_clb));
 	clb->op_req = (PyObject *)self;
 	clb->op_clb = pyclb;
 	http_response_stream(self->op_req,
@@ -356,7 +356,41 @@ HttpRequest_response_stream(HttpRequest *self, PyObject *args)
 	return (PyObject *)self;
 }
 
+static PyObject *
+HttpRequest_wshandshake(HttpRequest *self, PyObject *args)
+{
+	PyObject	*connect, *disconnect, *message;
+
+	if (!PyArg_ParseTuple(args, "OOO", &connect, &disconnect, &message))
+		return NULL;
+
+	if (!PyCallable_Check(connect)) {
+		PyErr_SetString(PyExc_TypeError, "'connect' argument is not callable.");
+		return NULL;
+	}
+	if (!PyCallable_Check(disconnect)) {
+		PyErr_SetString(PyExc_TypeError, "'disconnect' argument is not callable.");
+		return NULL;
+	}
+	if (!PyCallable_Check(message)) {
+		PyErr_SetString(PyExc_TypeError, "'message' argument is not callable.");
+		return NULL;
+	}
+
+	if(!pykore_websocket_handshake(self->op_req, connect, disconnect, message)) {
+		PyErr_SetString(PyExc_IOError, "WebSocket handshake failed.");
+		return NULL;
+	}
+
+	return (PyObject *)self;
+}
+
 static PyMethodDef HttpRequest_methods[] = {
+
+	{"websocket_handshake",
+	 (PyCFunction)HttpRequest_wshandshake,
+	 METH_VARARGS, 
+	 "Start handshake to establish a new WebSocket"},
 
 	{"get_header",
 	 (PyCFunction)HttpRequest_get_header,

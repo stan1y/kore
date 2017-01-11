@@ -285,30 +285,90 @@ pykore_handle_validator(struct kore_validator *val,
 
 /* WebSockets interface */
 
+struct pykore_wsclb {
+	PyObject	*connect;
+	PyObject	*disconnect;
+	PyObject	*message;
+};
+
 static void
 pykore_wsconnect(void *p, struct connection *c)
 {
+	struct pykore_wsclb		*clb;
+	PyObject				*args, *kwargs, *ret, *conn;
 
+	kore_log(LOG_DEBUG, "%s: started", __FUNCTION__);
+	clb = (struct pykore_wsclb *)p;
+	conn = pykore_connection_create(c);
+	kwargs = PyDict_New();
+	args = PyTuple_New(1);
+	PyTuple_SetItem(args, 0, conn);
+	Py_DECREF(conn);
+
+	ret = PyObject_Call(clb->connect, args, kwargs);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	if (ret == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+		}
+	}
 }
 
 static void
 pykore_wsdisconnect(void *p, struct connection *c)
 {
+	struct pykore_wsclb		*clb;
+	PyObject				*args, *kwargs, *ret, *conn;
 
+	clb = (struct pykore_wsclb *)p;
+	conn = pykore_connection_create(c);
+	kwargs = PyDict_New();
+	args = PyTuple_New(1);
+	PyTuple_SetItem(args, 0, conn);
+	Py_DECREF(conn);
+
+	ret = PyObject_Call(clb->disconnect, args, kwargs);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	if (ret == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+		}
+	}
 }
 
 static void
 pykore_wsmessage(void *p, struct connection *c,
 		    u_int8_t op, void *data, size_t len)
 {
+	struct pykore_wsclb		*clb;
+	PyObject				*args, *kwargs, *ret;
+	PyObject				*pyop, *pydata;
 
+	kore_log(LOG_DEBUG, "%s: started", __FUNCTION__);
+	clb = (struct pykore_wsclb *)p;
+	pyop = PyLong_FromUnsignedLong(op);
+	pydata = PyBytes_FromStringAndSize(data, len);
+	kwargs = PyDict_New();
+	args = PyTuple_New(2);
+	PyTuple_SetItem(args, 0, pyop);
+	Py_DECREF(pyop);
+	PyTuple_SetItem(args, 1, pydata);
+	Py_DECREF(pydata);
+
+	ret = PyObject_Call(clb->message, args, kwargs);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	if (ret == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+		}
+	}
 }
-
-struct pykore_wsclb {
-	PyObject	*connect;
-	PyObject	*disconnect;
-	PyObject	*message;
-};
 
 int 
 pykore_websocket_handshake(struct http_request *req,

@@ -45,7 +45,9 @@ int			 pykore_httpreq_check(PyObject *);
 void		 pykore_httpfile_register(PyObject *);
 PyObject	*pykore_httpfile_create(struct http_file *);
 int			 pykore_httpfile_check(PyObject *);
-
+void		 pykore_connection_register(PyObject *);
+PyObject	*pykore_connection_create(struct connection*);
+int			 pykore_connection_check(PyObject *);
 
 PyMODINIT_FUNC
 PyInit_kore(void);

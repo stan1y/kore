@@ -57,6 +57,7 @@ PyInit_kore(void)
 
 	pykore_httpreq_register(m);
 	pykore_httpfile_register(m);
+	pykore_connection_register(m);
 
 	PYCONST(m, "RESULT_OK", KORE_RESULT_OK);
 	PYCONST(m, "RESULT_ERROR", KORE_RESULT_ERROR);

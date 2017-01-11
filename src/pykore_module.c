@@ -28,8 +28,28 @@
         Py_DECREF(io); \
     } while(0)
 
+static
+PyObject *
+PyKore_log(PyObject *self, PyObject *args)
+{
+	unsigned int		 lvl;
+	const char			*msg;
+
+	if (!PyArg_ParseTuple(args, "iz", &lvl, &msg))
+		return NULL;
+
+	kore_log(lvl, msg);
+	Py_RETURN_NONE;
+}
+
 /* Module level functions */
 static PyMethodDef pykore_methods[] = {
+
+	{"log",
+     (PyCFunction)PyKore_log,
+     METH_VARARGS, 
+     "Broadcast data to a connected web socket."},
+
 	{NULL, NULL, 0, NULL}
 };
 
@@ -70,6 +90,9 @@ PyInit_kore(void)
 	PYCONST(m, "METHOD_HEAD", HTTP_METHOD_HEAD);
 	PYCONST(m, "WEBSOCKET_BROADCAST_LOCAL", WEBSOCKET_BROADCAST_LOCAL);
 	PYCONST(m, "WEBSOCKET_BROADCAST_GLOBAL", WEBSOCKET_BROADCAST_GLOBAL);
+	PYCONST(m, "LOG_ERR", LOG_ERR);
+	PYCONST(m, "LOG_DEBUG", LOG_DEBUG);
+	PYCONST(m, "LOG_NOTICE", LOG_NOTICE);
 
 	return m;
 }

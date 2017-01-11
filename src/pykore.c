@@ -230,10 +230,9 @@ pykore_handle_httpreq(struct http_request *req)
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, pyreq);
-	Py_DECREF(pyreq);
-
 	ret = PyObject_Call(
 		(PyObject*)req->hdlr->func, args, kwargs);
+	Py_DECREF(pyreq);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 
@@ -249,10 +248,9 @@ pykore_handle_onload(struct kore_module *module, int action)
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, pyact);
-	Py_DECREF(pyact);
-
 	ret = PyObject_Call(
 		(PyObject*)module->ocb, args, kwargs);
+	Py_DECREF(pyact);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 
@@ -271,13 +269,11 @@ pykore_handle_validator(struct kore_validator *val,
 	kwargs = PyDict_New();
 	args = PyTuple_New(2);
 	PyTuple_SetItem(args, 0, pyreq);
-	Py_DECREF(pyreq);
 	PyTuple_SetItem(args, 1, pydata);
-	Py_DECREF(pydata);
-
 	ret = PyObject_Call(
 		(PyObject*)val->func, args, kwargs);
-
+	Py_DECREF(pydata);
+	Py_DECREF(pyreq);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 	return pykore_returncall(ret);
@@ -292,102 +288,102 @@ struct pykore_wsclb {
 };
 
 static void
-pykore_wsconnect(void *p, struct connection *c)
+pykore_wsconnect(struct connection *c)
 {
 	struct pykore_wsclb		*clb;
 	PyObject				*args, *kwargs, *ret, *conn;
 
-	kore_log(LOG_DEBUG, "%s: started", __FUNCTION__);
-	clb = (struct pykore_wsclb *)p;
+	clb = (struct pykore_wsclb *)c->hdlr_extra;
 	conn = pykore_connection_create(c);
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, conn);
-	Py_DECREF(conn);
-
 	ret = PyObject_Call(clb->connect, args, kwargs);
-	Py_DECREF(args);
-	Py_DECREF(kwargs);
-
 	if (ret == NULL) {
 		if (PyErr_Occurred()) {
 			PyErr_Print();
 		}
 	}
+	Py_DECREF(conn);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
 }
 
 static void
-pykore_wsdisconnect(void *p, struct connection *c)
+pykore_wsdisconnect(struct connection *c)
 {
 	struct pykore_wsclb		*clb;
 	PyObject				*args, *kwargs, *ret, *conn;
 
-	clb = (struct pykore_wsclb *)p;
+	clb = (struct pykore_wsclb *)c->hdlr_extra;
 	conn = pykore_connection_create(c);
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, conn);
-	Py_DECREF(conn);
-
 	ret = PyObject_Call(clb->disconnect, args, kwargs);
-	Py_DECREF(args);
-	Py_DECREF(kwargs);
-
 	if (ret == NULL) {
 		if (PyErr_Occurred()) {
 			PyErr_Print();
 		}
 	}
+	Py_DECREF(conn);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
 }
 
 static void
-pykore_wsmessage(void *p, struct connection *c,
+pykore_wsmessage(struct connection *c,
 		    u_int8_t op, void *data, size_t len)
 {
 	struct pykore_wsclb		*clb;
 	PyObject				*args, *kwargs, *ret;
-	PyObject				*pyop, *pydata;
+	PyObject				*conn, *pyop, *pydata;
 
-	kore_log(LOG_DEBUG, "%s: started", __FUNCTION__);
-	clb = (struct pykore_wsclb *)p;
+	clb = (struct pykore_wsclb *)c->hdlr_extra;
+	conn = pykore_connection_create(c);
 	pyop = PyLong_FromUnsignedLong(op);
-	pydata = PyBytes_FromStringAndSize(data, len);
+	pydata = PyBytes_FromString(data);
 	kwargs = PyDict_New();
-	args = PyTuple_New(2);
-	PyTuple_SetItem(args, 0, pyop);
-	Py_DECREF(pyop);
-	PyTuple_SetItem(args, 1, pydata);
-	Py_DECREF(pydata);
-
+	args = PyTuple_New(3);
+	PyTuple_SetItem(args, 0, conn);
+	PyTuple_SetItem(args, 1, pyop);
+	PyTuple_SetItem(args, 2, pydata);
 	ret = PyObject_Call(clb->message, args, kwargs);
-	Py_DECREF(args);
-	Py_DECREF(kwargs);
-
 	if (ret == NULL) {
 		if (PyErr_Occurred()) {
 			PyErr_Print();
 		}
 	}
+	Py_DECREF(conn);
+	Py_DECREF(pyop);
+	Py_DECREF(pydata);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
 }
+
+static struct kore_wscbs wscbs = {
+	pykore_wsconnect,
+	pykore_wsmessage,
+	pykore_wsdisconnect
+};
+
+static struct pykore_wsclb pywscbs;
 
 int 
 pykore_websocket_handshake(struct http_request *req,
 	PyObject *connect, PyObject *disconnect, PyObject *message)
 {
-	struct pykore_wsclb		*clb;
-	struct kore_wscbs		*clbs;
-
-	clb = kore_malloc(sizeof(struct pykore_wsclb));
-	clb->connect = connect;
-	clb->disconnect = disconnect;
-	clb->message = message;
-
-	clbs = kore_malloc(sizeof(struct kore_wscbs));
-	clbs->connect = pykore_wsconnect;
-	clbs->disconnect = pykore_wsdisconnect;
-	clbs->message = pykore_wsmessage;
-	clbs->param = clb;
-
-	kore_websocket_handshake(req, clbs);
-	return KORE_RESULT_OK;
+	memset(&pywscbs, 0, sizeof(struct pykore_wsclb));
+	pywscbs.connect = connect;
+	pywscbs.disconnect = disconnect;
+	pywscbs.message = message;
+	if (req->owner->hdlr_extra != NULL) {
+		kore_log(LOG_ERR, "%s: connection's hdrl_extra already used.",
+			__FUNCTION__);
+		return (KORE_RESULT_ERROR);
+	}
+	req->owner->hdlr_extra = (void*)&pywscbs;
+	kore_websocket_handshake(req, &wscbs);
+	return (KORE_RESULT_OK);
 }

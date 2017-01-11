@@ -107,7 +107,7 @@ kore_websocket_handshake(struct http_request *req, struct kore_wscbs *wscbs)
 	req->owner->idle_timer.length = kore_websocket_timeout;
 
 	if (wscbs->connect != NULL)
-		wscbs->connect(wscbs->param, req->owner);
+		wscbs->connect(req->owner);
 }
 
 void
@@ -244,10 +244,10 @@ static int
 websocket_recv_frame(struct netbuf *nb)
 {
 	struct connection	*c;
-	int			ret;
+	int					 ret;
 	struct kore_wscbs	*wscbs;
-	u_int64_t		len, i, total;
-	u_int8_t		op, moff, extra;
+	u_int64_t			 len, i, total;
+	u_int8_t			 op, moff, extra;
 
 	c = nb->owner;
 	wscbs = c->wscbs;
@@ -273,7 +273,8 @@ websocket_recv_frame(struct netbuf *nb)
 	}
 
 	if (len > kore_websocket_maxframe) {
-		kore_debug("%p: frame too big", c);
+		kore_log(LOG_ERR, "%s: request size %d is bigger than max frame size %d",
+			__FUNCTION__, len, kore_websocket_maxframe);
 		return (KORE_RESULT_ERROR);
 	}
 
@@ -285,8 +286,11 @@ websocket_recv_frame(struct netbuf *nb)
 		return (KORE_RESULT_OK);
 	}
 
-	if (total != nb->b_len)
+	if (total != nb->b_len) {
+		kore_log(LOG_ERR, "%s: invalid web socket packet format",
+			__FUNCTION__, c);
 		return (KORE_RESULT_ERROR);
+	}
 
 	for (i = 0; i < len; i++)
 		nb->buf[moff + 4 + i] ^= nb->buf[moff + (i % 4)];
@@ -296,12 +300,13 @@ websocket_recv_frame(struct netbuf *nb)
 	case WEBSOCKET_OP_CONT:
 	case WEBSOCKET_OP_PONG:
 		ret = KORE_RESULT_ERROR;
-		kore_log(LOG_ERR, "%p: we do not support op 0x%02x yet", c, op);
+		kore_log(LOG_ERR, "%s: we do not support op 0x%02x yet",
+			__FUNCTION__, op);
 		break;
 	case WEBSOCKET_OP_TEXT:
 	case WEBSOCKET_OP_BINARY:
 		if (wscbs->message != NULL)
-			wscbs->message(wscbs->param, c, op, &nb->buf[moff + 4], len);
+			wscbs->message(c, op, &nb->buf[moff + 4], len);
 		break;
 	case WEBSOCKET_OP_CLOSE:
 		kore_connection_disconnect(c);
@@ -311,7 +316,8 @@ websocket_recv_frame(struct netbuf *nb)
 		    &nb->buf[moff + 4], len);
 		break;
 	default:
-		kore_debug("%p: bad websocket op %d", c, op);
+		kore_log(LOG_ERR, "%s: bad websocket op %d",
+			__FUNCTION__, op);
 		return (KORE_RESULT_ERROR);
 	}
 
@@ -325,5 +331,5 @@ websocket_disconnect(struct connection *c)
 	struct kore_wscbs	*wscbs = c->wscbs;
 
 	if (wscbs->disconnect != NULL)
-		wscbs->disconnect(wscbs->param, c);
+		wscbs->disconnect(c);
 }

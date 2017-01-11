@@ -368,11 +368,10 @@ struct kore_pool {
 };
 
 struct kore_wscbs {
-	void		(*connect)(void *, struct connection *);
-	void		(*message)(void *, struct connection *, u_int8_t,
+	void		(*connect)(struct connection *);
+	void		(*message)(struct connection *, u_int8_t,
 			    void *, size_t);
-	void		(*disconnect)(void *, struct connection *);
-	void		*param;
+	void		(*disconnect)(struct connection *);
 };
 
 struct kore_timer {

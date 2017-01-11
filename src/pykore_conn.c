@@ -64,7 +64,32 @@ static PyGetSetDef Connection_getset[] = {
 	{NULL}
 };
 
+
+static PyObject*
+Connection_wsbroadcast(Connection *self, PyObject *args)
+{
+    unsigned int     op;
+    Py_buffer        data;
+    int              flag;
+
+    if (!PyArg_ParseTuple(args, "Iy*i", &op, &data, &flag))
+        return NULL;
+
+    kore_websocket_broadcast(self->op_conn, 
+        op, 
+        data.buf,
+        data.len, 
+        flag);
+
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef Connection_methods[] = {
+    {"websocket_broadcast",
+     (PyCFunction)Connection_wsbroadcast,
+     METH_VARARGS, 
+     "Broadcast data to a connected web socket."},
+
 	{NULL}
 };
 

@@ -191,8 +191,7 @@ kore_module_reload(int cbs)
 			fatal("kore_module_reload(): %s", dlerror());
 
 		if (module->onload != NULL) {
-			*(void **)&(module->ocb) =
-			    dlsym(module->handle, module->onload);
+			module->ocb = kore_module_getfunc(module, module->onload);
 			if (module->ocb == NULL) {
 				fatal("%s: onload '%s' not present",
 				    module->path, module->onload);

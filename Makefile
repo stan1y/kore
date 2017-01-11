@@ -64,7 +64,8 @@ ifneq ("$(JSONRPC)", "")
 endif
 
 ifneq ("$(PYTHON)", "")
-	S_SRC+=src/pykore.c src/pykore_module.c src/pykore_request.c src/pykore_file.c
+	S_SRC+=src/pykore.c src/pykore_module.c src/pykore_request.c \
+		src/pykore_file.c src/pykore_conn.c
 	LDFLAGS+=$(shell python3-config --ldflags)
 	CFLAGS+=$(shell python3-config --includes) -DKORE_USE_PYTHON
 endif

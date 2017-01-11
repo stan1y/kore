@@ -55,6 +55,49 @@ def hello_world(req):
 	req.response(200, body.encode('utf-8'))
 	print('Bye!')
 
+#
+# Auth & Validator Example
+#
+
+private_html = '''
+<!DOCTYPE>
+<html>
+<head>
+	<link rel="stylesheet" href="/css/style.css" type="text/css">
+	<title>Kore Authentication tests</title>
+</head>
+
+<body>
+
+<div class="content">
+	<p style="font-size: small">The cookie session_id should now be set.</p>
+	<p style="font-size: small">You can continue to <a href="/private">view page handler in auth block</a></p>
+</div>
+
+</body>
+</html>
+'''
+
+def validate_session(req, data):
+	rc = kore.RESULT_OK if data.decode('utf-8') == 'test123' else kore.RESULT_ERROR
+	print("Validating session_id=%s => %d" % (data, rc))
+	return rc
+
+def handle_auth(req):
+	req.response_header("content-type", "text/html");
+	req.response_header("set-cookie", "session_id=test123");
+	req.response(200, private_html.encode('utf-8'))
+
+def handle_private(req):
+	req.response_header("content-type", "text/html");
+	req.response(200, "<body><h1>This is private content!</h1></body>".encode('utf-8'))
+
+
+#
+# File Upload Example
+#
+
+
 upload_html = '''
 <!DOCTYPE>
 <html>
@@ -82,6 +125,7 @@ upload_html = '''
 </body>
 </html>
 '''
+
 
 def handle_file_upload(req):
 	print('handle_file_upload')

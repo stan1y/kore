@@ -304,7 +304,7 @@ def on_wsdisconnect(conn):
 	print("websocket - disconnected %s" % conn.addr)
 
 def on_wsmessage(conn, op, data):
-	print("websocket - op=%d data='%s' " % (op, data))
+	print("websocket - op=%d len=%s " % (op, len(data)))
 	conn.websocket_broadcast(op, data, kore.WEBSOCKET_BROADCAST_GLOBAL)
 
 def handle_wspage(req):

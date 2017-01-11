@@ -16,6 +16,10 @@
 
 #include "kore.h"
 
+#if defined(KORE_USE_PYTHON)
+#include "pykore.h"
+#endif
+
 TAILQ_HEAD(, kore_validator)		validators;
 
 void
@@ -30,6 +34,7 @@ kore_validator_add(const char *name, u_int8_t type, const char *arg)
 	struct kore_validator		*val;
 
 	val = kore_malloc(sizeof(*val));
+	val->runtime = RUNTIME_TYPE_NATIVE;
 	val->type = type;
 
 	switch (val->type) {
@@ -42,7 +47,7 @@ kore_validator_add(const char *name, u_int8_t type, const char *arg)
 		}
 		break;
 	case KORE_VALIDATOR_TYPE_FUNCTION:
-		*(void **)(&val->func) = kore_module_getsym(arg);
+		val->runtime = kore_module_findfunc(&(val->func), arg);
 		if (val->func == NULL) {
 			kore_free(val);
 			kore_log(LOG_NOTICE,
@@ -82,7 +87,7 @@ int
 kore_validator_check(struct http_request *req, struct kore_validator *val,
     void *data)
 {
-	int		r;
+	int		r, (*func)(struct http_request *, char *);
 
 	switch (val->type) {
 	case KORE_VALIDATOR_TYPE_REGEX:
@@ -92,7 +97,19 @@ kore_validator_check(struct http_request *req, struct kore_validator *val,
 			r = KORE_RESULT_ERROR;
 		break;
 	case KORE_VALIDATOR_TYPE_FUNCTION:
-		r = val->func(req, data);
+		switch(val->runtime) {
+			default:
+			case RUNTIME_TYPE_NATIVE:
+				*(void **)&(func) = val->func;
+				r = func(req, data);
+				break;
+		
+#if defined(KORE_USE_PYTHON)
+			case RUNTIME_TYPE_PYTHON:
+				r = pykore_handle_validator(val, req, data);
+				break;
+#endif
+		}
 		break;
 	default:
 		r = KORE_RESULT_ERROR;
@@ -113,7 +130,7 @@ kore_validator_reload(void)
 		if (val->type != KORE_VALIDATOR_TYPE_FUNCTION)
 			continue;
 
-		*(void **)&(val->func) = kore_module_getsym(val->arg);
+		val->runtime = kore_module_findfunc(*(void **)&(val->func), val->arg);
 		if (val->func == NULL)
 			fatal("no function for validator %s found", val->name);
 	}

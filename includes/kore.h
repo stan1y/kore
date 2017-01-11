@@ -322,11 +322,13 @@ TAILQ_HEAD(kore_domain_h, kore_domain);
 #define KORE_VALIDATOR_TYPE_FUNCTION	2
 
 struct kore_validator {
-	u_int8_t		type;
+	u_int8_t		 type;
 	char			*name;
 	char			*arg;
-	regex_t			rctx;
-	int			(*func)(struct http_request *, char *);
+	regex_t			 rctx;
+
+	int				 runtime;
+	void			*func;
 
 	TAILQ_ENTRY(kore_validator)	list;
 };

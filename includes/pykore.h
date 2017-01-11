@@ -31,14 +31,15 @@ void		 kore_python_cleanup(void);
 PyObject	*pykore_fload(char *);
 PyObject	*pykore_getclb(PyObject *, const char*);
 int			 pykore_handle_httpreq(struct http_request *);
-int			 pykore_handle_onload(struct kore_module*, int);
+int			 pykore_handle_onload(struct kore_module *, int);
+int			 pykore_handle_validator(struct kore_validator *, struct http_request *, char *);
 void		 pykore_printver(void);
 
 void		 pykore_httpreq_register(PyObject *);
 PyObject	*pykore_httpreq_create(struct http_request *);
 int			 pykore_httpreq_check(PyObject *);
 
-void		 pykore_httpfile_register(PyObject* );
+void		 pykore_httpfile_register(PyObject *);
 PyObject	*pykore_httpfile_create(struct http_file *);
 int			 pykore_httpfile_check(PyObject *);
 int			 pykore_returncall(PyObject *);

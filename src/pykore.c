@@ -257,3 +257,24 @@ pykore_handle_onload(struct kore_module *module, int action)
 
 	return pykore_returncall(ret);
 }
+
+int
+pykore_handle_validator(struct kore_validator *val,
+	struct http_request *req,
+	char *data)
+{
+	PyObject	*pydata, *args, *kwargs, *ret;
+
+	pydata = PyBytes_FromString(data);
+	kwargs = PyDict_New();
+	args = PyTuple_New(1);
+	PyTuple_SetItem(args, 0, pydata);
+	Py_DECREF(pydata);
+
+	ret = PyObject_Call(
+		(PyObject*)val->func, args, kwargs);
+	Py_DECREF(args);
+	Py_DECREF(kwargs);
+
+	return pykore_returncall(ret);
+}

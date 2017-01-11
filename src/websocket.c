@@ -244,10 +244,10 @@ static int
 websocket_recv_frame(struct netbuf *nb)
 {
 	struct connection	*c;
-	int					 ret;
+	int			ret;
 	struct kore_wscbs	*wscbs;
-	u_int64_t			 len, i, total;
-	u_int8_t			 op, moff, extra;
+	u_int64_t		len, i, total;
+	u_int8_t		op, moff, extra;
 
 	c = nb->owner;
 	wscbs = c->wscbs;
@@ -273,8 +273,7 @@ websocket_recv_frame(struct netbuf *nb)
 	}
 
 	if (len > kore_websocket_maxframe) {
-		kore_log(LOG_ERR, "%s: request size %d is bigger than max frame size %d",
-			__FUNCTION__, len, kore_websocket_maxframe);
+		kore_debug("%p: frame too big", c);
 		return (KORE_RESULT_ERROR);
 	}
 
@@ -286,11 +285,8 @@ websocket_recv_frame(struct netbuf *nb)
 		return (KORE_RESULT_OK);
 	}
 
-	if (total != nb->b_len) {
-		kore_log(LOG_ERR, "%s: invalid web socket packet format",
-			__FUNCTION__, c);
+	if (total != nb->b_len)
 		return (KORE_RESULT_ERROR);
-	}
 
 	for (i = 0; i < len; i++)
 		nb->buf[moff + 4 + i] ^= nb->buf[moff + (i % 4)];
@@ -300,8 +296,7 @@ websocket_recv_frame(struct netbuf *nb)
 	case WEBSOCKET_OP_CONT:
 	case WEBSOCKET_OP_PONG:
 		ret = KORE_RESULT_ERROR;
-		kore_log(LOG_ERR, "%s: we do not support op 0x%02x yet",
-			__FUNCTION__, op);
+		kore_log(LOG_ERR, "%p: we do not support op 0x%02x yet", c, op);
 		break;
 	case WEBSOCKET_OP_TEXT:
 	case WEBSOCKET_OP_BINARY:
@@ -316,8 +311,7 @@ websocket_recv_frame(struct netbuf *nb)
 		    &nb->buf[moff + 4], len);
 		break;
 	default:
-		kore_log(LOG_ERR, "%s: bad websocket op %d",
-			__FUNCTION__, op);
+		kore_debug("%p: bad websocket op %d", c, op);
 		return (KORE_RESULT_ERROR);
 	}
 

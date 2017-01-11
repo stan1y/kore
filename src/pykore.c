@@ -368,22 +368,23 @@ static struct kore_wscbs wscbs = {
 	pykore_wsdisconnect
 };
 
-static struct pykore_wsclb pywscbs;
-
 int 
 pykore_websocket_handshake(struct http_request *req,
 	PyObject *connect, PyObject *disconnect, PyObject *message)
 {
-	memset(&pywscbs, 0, sizeof(struct pykore_wsclb));
-	pywscbs.connect = connect;
-	pywscbs.disconnect = disconnect;
-	pywscbs.message = message;
+	struct pykore_wsclb		 *pywscbs;
+
+	pywscbs = kore_malloc(sizeof(struct pykore_wsclb));
+	memset(pywscbs, 0, sizeof(struct pykore_wsclb));
+	pywscbs->connect = connect;
+	pywscbs->disconnect = disconnect;
+	pywscbs->message = message;
 	if (req->owner->hdlr_extra != NULL) {
 		kore_log(LOG_ERR, "%s: connection's hdrl_extra already used.",
 			__FUNCTION__);
 		return (KORE_RESULT_ERROR);
 	}
-	req->owner->hdlr_extra = (void*)&pywscbs;
+	req->owner->hdlr_extra = (void*)pywscbs;
 	kore_websocket_handshake(req, &wscbs);
 	return (KORE_RESULT_OK);
 }

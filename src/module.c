@@ -62,6 +62,45 @@ kore_module_cleanup(void)
 }
 
 void
+kore_module_handle_load(struct kore_module *m)
+{
+	/* module can be of different nature */
+	if (strstr(m->path, ".so") != NULL) {
+		m->runtime = RUNTIME_TYPE_NATIVE;
+		m->handle = dlopen(m->path, RTLD_NOW | RTLD_GLOBAL);
+		if (m->handle == NULL)
+			fatal("Failed to load '%s': %s", m->path, dlerror());	
+	}
+
+#if defined(KORE_USE_PYTHON)
+	if (strstr(m->path, ".py") != NULL) {
+		m->runtime = RUNTIME_TYPE_PYTHON;
+		m->handle = pykore_fload(m->path);
+		if (m->handle == NULL)
+			fatal("Failed to load python module '%s'", m->path);
+	}
+#endif
+}
+
+void
+kore_module_handle_release(struct kore_module *m)
+{
+	switch(m->runtime) {
+		default:
+		case RUNTIME_TYPE_NATIVE:
+			if (dlclose(m->handle))
+				fatal("cannot close existing module: %s", dlerror());
+			break;
+
+#if defined(KORE_USE_PYTHON)
+		case RUNTIME_TYPE_PYTHON:
+			Py_DECREF(m->handle);
+			break;
+#endif
+	}
+}
+
+void
 kore_module_load(const char *path, const char *onload)
 {
 #if !defined(KORE_SINGLE_BINARY)
@@ -81,28 +120,11 @@ kore_module_load(const char *path, const char *onload)
 
 	module->path = kore_strdup(path);
 	module->mtime = st.st_mtime;
+	kore_module_handle_load(module);
 #else
 	module->path = NULL;
 	module->mtime = 0;
 #endif
-	if (path != NULL) {
-		/* module can be of different nature */
-		if (strstr(module->path, ".so") != NULL) {
-			module->runtime = RUNTIME_TYPE_NATIVE;
-			module->handle = dlopen(module->path, RTLD_NOW | RTLD_GLOBAL);
-			if (module->handle == NULL)
-				fatal("%s: %s", path, dlerror());	
-		}
-
-#if defined(KORE_USE_PYTHON)
-		if (strstr(module->path, ".py") != NULL) {
-			module->runtime = RUNTIME_TYPE_PYTHON;
-			module->handle = pykore_fload(module->path);
-			if (module->handle == NULL)
-				fatal("%s: %s", path, "failed to load python module");
-		}
-#endif
-	}
 	if (onload != NULL) {
 		module->onload = kore_strdup(onload);
 		module->ocb = kore_module_getfunc(module, onload);
@@ -183,10 +205,10 @@ kore_module_reload(int cbs)
 		}
 
 		module->mtime = st.st_mtime;
-		if (dlclose(module->handle))
-			fatal("cannot close existing module: %s", dlerror());
+		if (module->handle != NULL)
+			kore_module_handle_release(module);
 
-		module->handle = dlopen(module->path, RTLD_NOW | RTLD_GLOBAL);
+		kore_module_handle_load(module);
 		if (module->handle == NULL)
 			fatal("kore_module_reload(): %s", dlerror());
 

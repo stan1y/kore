@@ -27,22 +27,24 @@ extern char		*python_home;
 
 int			 kore_python_init(void);
 void		 kore_python_cleanup(void);
+void		 pykore_printver(void);
+int			 pykore_returncall(PyObject *);
 
 PyObject	*pykore_fload(char *);
 PyObject	*pykore_getclb(PyObject *, const char*);
+
 int			 pykore_handle_httpreq(struct http_request *);
 int			 pykore_handle_onload(struct kore_module *, int);
 int			 pykore_handle_validator(struct kore_validator *, struct http_request *, char *);
-void		 pykore_printver(void);
+
+int			 pykore_websocket_handshake(struct http_request *, PyObject *, PyObject *, PyObject *);
 
 void		 pykore_httpreq_register(PyObject *);
 PyObject	*pykore_httpreq_create(struct http_request *);
 int			 pykore_httpreq_check(PyObject *);
-
 void		 pykore_httpfile_register(PyObject *);
 PyObject	*pykore_httpfile_create(struct http_file *);
 int			 pykore_httpfile_check(PyObject *);
-int			 pykore_returncall(PyObject *);
 
 
 PyMODINIT_FUNC

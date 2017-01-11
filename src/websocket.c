@@ -107,7 +107,7 @@ kore_websocket_handshake(struct http_request *req, struct kore_wscbs *wscbs)
 	req->owner->idle_timer.length = kore_websocket_timeout;
 
 	if (wscbs->connect != NULL)
-		wscbs->connect(req->owner);
+		wscbs->connect(wscbs->param, req->owner);
 }
 
 void
@@ -301,7 +301,7 @@ websocket_recv_frame(struct netbuf *nb)
 	case WEBSOCKET_OP_TEXT:
 	case WEBSOCKET_OP_BINARY:
 		if (wscbs->message != NULL)
-			wscbs->message(c, op, &nb->buf[moff + 4], len);
+			wscbs->message(wscbs->param, c, op, &nb->buf[moff + 4], len);
 		break;
 	case WEBSOCKET_OP_CLOSE:
 		kore_connection_disconnect(c);
@@ -325,5 +325,5 @@ websocket_disconnect(struct connection *c)
 	struct kore_wscbs	*wscbs = c->wscbs;
 
 	if (wscbs->disconnect != NULL)
-		wscbs->disconnect(c);
+		wscbs->disconnect(wscbs->param, c);
 }

@@ -202,9 +202,10 @@ pykore_returncall(PyObject *ret)
 
 	if (ret == NULL) {
 		rc = KORE_RESULT_ERROR;
-		if (PyErr_Occurred())
+		if (PyErr_Occurred()) {
 			PyErr_Print();
-		
+		}
+		kore_log(LOG_ERR, "%s: exception occured.", __FUNCTION__);
 		return rc;
 	}
 
@@ -263,18 +264,70 @@ pykore_handle_validator(struct kore_validator *val,
 	struct http_request *req,
 	char *data)
 {
-	PyObject	*pydata, *args, *kwargs, *ret;
+	PyObject	*pydata, *pyreq, *args, *kwargs, *ret;
 
+	pyreq = pykore_httpreq_create(req);
 	pydata = PyBytes_FromString(data);
 	kwargs = PyDict_New();
-	args = PyTuple_New(1);
-	PyTuple_SetItem(args, 0, pydata);
+	args = PyTuple_New(2);
+	PyTuple_SetItem(args, 0, pyreq);
+	Py_DECREF(pyreq);
+	PyTuple_SetItem(args, 1, pydata);
 	Py_DECREF(pydata);
 
 	ret = PyObject_Call(
 		(PyObject*)val->func, args, kwargs);
+
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
-
 	return pykore_returncall(ret);
+}
+
+/* WebSockets interface */
+
+static void
+pykore_wsconnect(void *p, struct connection *c)
+{
+
+}
+
+static void
+pykore_wsdisconnect(void *p, struct connection *c)
+{
+
+}
+
+static void
+pykore_wsmessage(void *p, struct connection *c,
+		    u_int8_t op, void *data, size_t len)
+{
+
+}
+
+struct pykore_wsclb {
+	PyObject	*connect;
+	PyObject	*disconnect;
+	PyObject	*message;
+};
+
+int 
+pykore_websocket_handshake(struct http_request *req,
+	PyObject *connect, PyObject *disconnect, PyObject *message)
+{
+	struct pykore_wsclb		*clb;
+	struct kore_wscbs		*clbs;
+
+	clb = kore_malloc(sizeof(struct pykore_wsclb));
+	clb->connect = connect;
+	clb->disconnect = disconnect;
+	clb->message = message;
+
+	clbs = kore_malloc(sizeof(struct kore_wscbs));
+	clbs->connect = pykore_wsconnect;
+	clbs->disconnect = pykore_wsdisconnect;
+	clbs->message = pykore_wsmessage;
+	clbs->param = clb;
+
+	kore_websocket_handshake(req, clbs);
+	return KORE_RESULT_OK;
 }

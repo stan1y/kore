@@ -176,7 +176,7 @@ video_html = '''
 
 <video class="video-js vjs-default-skin" width="640"
     height="240" controls preload="auto" data-setup='{"example_option":true}'>
-	<source src="/small.ogv" type="video/ogg">
+	<source src="/videos/small.ogv" type="video/ogg">
 Your browser does not support the video tag.
 </video>
 
@@ -206,7 +206,9 @@ class Video(object):
 
 	@classmethod
 	def open(cls, path):
-		vpath = os.path.join('videos', path[1:])
+		if not '/videos' in path:
+			raise Exception("Invalid video path")
+		vpath = path[1:]
 		if not os.path.exists(vpath):
 			print ("No such video file: %s" % vpath)
 			return None
@@ -218,7 +220,7 @@ class Video(object):
 
 	@classmethod
 	def get(cls, path):
-		return cls.__opened__.get(os.path.join('videos', path[1:]))
+		return cls.__opened__.get(path[1:])
 
 
 def video_page(req):
@@ -291,6 +293,28 @@ def video_stream(req):
 	req.response_stream(status, v.data[start:end], video_finish)
 
 
+#
+# WebSockets example
+#
 
+def on_wsconnect(conn):
+	print("websocket - connected %s" % conn.addr)
+
+def on_wsdisconnect(conn):
+	print("websocket - disconnected %s" % conn.addr)
+
+def on_wsmessage(conn, op, data):
+	print("websocket - op=%d data='%s' " % (op, data))
+	conn.websocket_broadcast(op, data, kore.WEBSOCKET_BROADCAST_GLOBAL)
+
+def handle_wspage(req):
+	req.response_header("content-type", "text/html")
+	with open('./assets/websockets_frontend.html', 'r') as f:
+		wshtml = '\n'.join(f.readlines())
+		req.response(200, wshtml.encode('utf-8'))
+
+def handle_wsconnect(req):
+	print("websocket - start connection")
+	req.websocket_handshake(on_wsconnect, on_wsdisconnect, on_wsmessage)
 	
 

@@ -16,25 +16,26 @@ import os
 import sys
 import mmap
 
-import kore
-
 import html
 import datetime
 import urllib.parse
 
+from kore import *
+
 def on_load(state):
-	print('python -> on_load: %s' % ('loading' if state == kore.MODULE_LOAD else 'unloading'))
+	print('python %s' % ('loading' if state == MODULE_LOAD else 'unloading'))
+	log(LOG_DEBUG, 'python worker pid: %d' % os.getpid())
 
 def method_name(mth):
-	if mth == kore.METHOD_GET:
+	if mth == METHOD_GET:
 		return 'GET'
-	if mth == kore.METHOD_POST:
+	if mth == METHOD_POST:
 		return 'POST'
-	if mth == kore.METHOD_PUT:
+	if mth == METHOD_PUT:
 		return 'PUT'
-	if mth == kore.METHOD_DELETE:
+	if mth == METHOD_DELETE:
 		return 'DELETE'
-	if mth == kore.METHOD_HEAD:
+	if mth == METHOD_HEAD:
 		return 'HEAD'
 	return 'UNKNOWN'
 
@@ -79,7 +80,7 @@ private_html = '''
 '''
 
 def validate_session(req, data):
-	rc = kore.RESULT_OK if data.decode('utf-8') == 'test123' else kore.RESULT_ERROR
+	rc = RESULT_OK if data.decode('utf-8') == 'test123' else RESULT_ERROR
 	print("Validating session_id=%s => %d" % (data, rc))
 	return rc
 
@@ -131,14 +132,14 @@ def handle_file_upload(req):
 	print('handle_file_upload')
 	req.response_header('Content-Type', 'text/html')
 
-	if req.method == kore.METHOD_GET:
+	if req.method == METHOD_GET:
 		print('->rendering upload form')
 		req.response(200,
 			upload_html.format(
 				upload='',
 				body='').encode('utf-8'))
 
-	if req.method == kore.METHOD_POST:
+	if req.method == METHOD_POST:
 		if req.bodyfd != -1:
 			print("file is on disk")
 
@@ -305,7 +306,7 @@ def on_wsdisconnect(conn):
 
 def on_wsmessage(conn, op, data):
 	print("websocket - op=%d len=%s " % (op, len(data)))
-	conn.websocket_broadcast(op, data, kore.WEBSOCKET_BROADCAST_GLOBAL)
+	conn.websocket_broadcast(op, data, WEBSOCKET_BROADCAST_GLOBAL)
 
 def handle_wspage(req):
 	req.response_header("content-type", "text/html")

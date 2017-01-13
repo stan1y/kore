@@ -38,7 +38,7 @@ struct pykore_stream_clb {
 static void
 HttpRequest_dealloc(HttpRequest *self)
 {
-	if (self->op_body != NULL && self->op_body != Py_None){
+	if (self->op_body != NULL){
 		Py_DECREF(self->op_body);
 	}
 }
@@ -118,15 +118,16 @@ HttpRequest_body(HttpRequest* self, void *closure)
 	}
 
 	if (buf->offset == 0) {
-		/* Empty body -> None */
+		/* keep own reference to None */
 		self->op_body = Py_None;
 		Py_INCREF(self->op_body);
 	}
 	else {
+		/* keep own reference to bytes */
 		self->op_body = PyBytes_FromString(kore_buf_stringify(buf, NULL));
 	}
 	kore_buf_free(buf);
-	
+
 	Py_INCREF(self->op_body);
 	return self->op_body;
 }
@@ -251,6 +252,7 @@ HttpRequest_get_file(HttpRequest *self, PyObject *args)
 {
 	struct http_file	*file;
 	const char			*name;
+	PyObject			*pyfile;
 
 	if (!PyArg_ParseTuple(args, "s", &name))
 		return NULL;
@@ -259,7 +261,13 @@ HttpRequest_get_file(HttpRequest *self, PyObject *args)
 	if (file == NULL)
 		Py_RETURN_NONE;
 	
-	return pykore_httpfile_create(file);
+	pyfile = pykore_httpfile_create(file);
+	if (pyfile == NULL) {
+		/* report error as exception */
+		PyErr_SetString(PyExc_IOError, "Failed to create HttpFile.");
+		return NULL;
+	}
+	return pyfile;
 }
 
 static PyObject *
@@ -317,8 +325,11 @@ HttpRequest_stream_complete(struct netbuf *nb)
 
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
+	/* incref of stored op_req for SetItem to steal
+	 * and release later in Py_DECREF(args) 
+	 */
+	Py_INCREF(clb->op_req);
 	PyTuple_SetItem(args, 0, clb->op_req);
-
 	ret = PyObject_Call(clb->op_clb, args, kwargs);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
@@ -527,9 +538,6 @@ pykore_httpreq_create(struct http_request *req)
 
 	pyreq = PyObject_New(HttpRequest, &HttpRequestType);
 	if (pyreq == NULL) {
-		if (PyErr_Occurred())
-			PyErr_Print();
-
 		return NULL;
 	}
 

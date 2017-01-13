@@ -183,11 +183,17 @@ pykore_getclb(PyObject *pymod, const char* fname)
 
 	attr = PyObject_GetAttrString(pymod, fname);
 	if (attr == NULL) {
+		kore_log(LOG_ERR, "failed to get python callback");
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+			PyErr_Clear();
+		}
 		return NULL;
 	}
 
 	if (!PyCallable_Check(attr)) {
 		Py_XDECREF(attr);
+		kore_log(LOG_ERR, "python object in callback is not callable");
 		return NULL;
 	}
 
@@ -202,10 +208,11 @@ pykore_returncall(PyObject *ret)
 
 	if (ret == NULL) {
 		rc = KORE_RESULT_ERROR;
+		kore_log(LOG_ERR, "python function call returned exception");
 		if (PyErr_Occurred()) {
 			PyErr_Print();
+			PyErr_Clear();
 		}
-		kore_log(LOG_ERR, "%s: exception occured.", __FUNCTION__);
 		return rc;
 	}
 
@@ -224,18 +231,22 @@ pykore_handle_httpreq(struct http_request *req)
 
 	pyreq = pykore_httpreq_create(req);
 	if (pyreq == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+			PyErr_Clear();
+		}
 		return KORE_RESULT_ERROR;
 	}
 
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, pyreq);
+
 	ret = PyObject_Call(
 		(PyObject*)req->hdlr->func, args, kwargs);
-	Py_DECREF(pyreq);
+	
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
-
 	return pykore_returncall(ret);
 }
 
@@ -248,9 +259,10 @@ pykore_handle_onload(struct kore_module *module, int action)
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, pyact);
+
 	ret = PyObject_Call(
 		(PyObject*)module->ocb, args, kwargs);
-	Py_DECREF(pyact);
+	
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 
@@ -270,10 +282,10 @@ pykore_handle_validator(struct kore_validator *val,
 	args = PyTuple_New(2);
 	PyTuple_SetItem(args, 0, pyreq);
 	PyTuple_SetItem(args, 1, pydata);
+
 	ret = PyObject_Call(
 		(PyObject*)val->func, args, kwargs);
-	Py_DECREF(pydata);
-	Py_DECREF(pyreq);
+	
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 	return pykore_returncall(ret);
@@ -295,18 +307,28 @@ pykore_wsconnect(struct connection *c)
 
 	clb = (struct pykore_wsclb *)c->hdlr_extra;
 	conn = pykore_connection_create(c);
+	if (conn == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+			PyErr_Clear();
+			return;
+		}
+	}
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, conn);
+
 	ret = PyObject_Call(clb->connect, args, kwargs);
 	if (ret == NULL) {
+		kore_log(LOG_ERR, "python 'wsconnect' callback failed.");
 		if (PyErr_Occurred()) {
 			PyErr_Print();
+			PyErr_Clear();
 		}
 	}
-	Py_DECREF(conn);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
+	Py_XDECREF(ret);
 }
 
 static void
@@ -317,18 +339,28 @@ pykore_wsdisconnect(struct connection *c)
 
 	clb = (struct pykore_wsclb *)c->hdlr_extra;
 	conn = pykore_connection_create(c);
+	if (conn == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+			PyErr_Clear();
+			return;
+		}
+	}
 	kwargs = PyDict_New();
 	args = PyTuple_New(1);
 	PyTuple_SetItem(args, 0, conn);
+
 	ret = PyObject_Call(clb->disconnect, args, kwargs);
 	if (ret == NULL) {
+		kore_log(LOG_ERR, "python 'wsdisconnect' callback failed.");
 		if (PyErr_Occurred()) {
 			PyErr_Print();
+			PyErr_Clear();
 		}
 	}
-	Py_DECREF(conn);
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
+	Py_XDECREF(ret);
 }
 
 static void
@@ -341,25 +373,35 @@ pykore_wsmessage(struct connection *c,
 
 	clb = (struct pykore_wsclb *)c->hdlr_extra;
 	conn = pykore_connection_create(c);
+	if (conn == NULL) {
+		if (PyErr_Occurred()) {
+			PyErr_Print();
+			PyErr_Clear();
+			return;
+		}
+	}
 	pyop = PyLong_FromUnsignedLong(op);
 	pydata = PyBytes_FromString(data);
+
 	kwargs = PyDict_New();
-	args = PyTuple_New(3);
+	args = PyTuple_New(3);	
 	PyTuple_SetItem(args, 0, conn);
 	PyTuple_SetItem(args, 1, pyop);
 	PyTuple_SetItem(args, 2, pydata);
+
 	ret = PyObject_Call(clb->message, args, kwargs);
 	if (ret == NULL) {
+		kore_log(LOG_ERR, "python 'wsmessage' callback failed.");
 		if (PyErr_Occurred()) {
 			PyErr_Print();
+			PyErr_Clear();
 		}
 	}
-	Py_DECREF(conn);
-	Py_DECREF(pyop);
-	Py_DECREF(pydata);
+	kore_log(LOG_DEBUG, "after python message callback");
+	
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
-
+	Py_XDECREF(ret);
 }
 
 static struct kore_wscbs wscbs = {

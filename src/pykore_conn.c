@@ -27,6 +27,11 @@ typedef struct {
 
 } Connection;
 
+static void
+Connection_dealloc(Connection *self)
+{
+}
+
 static PyObject *
 Connection_type(Connection* self, void *closure)
 {
@@ -75,12 +80,13 @@ Connection_wsbroadcast(Connection *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "Iy*i", &op, &data, &flag))
         return NULL;
 
+    kore_log(LOG_DEBUG, "before kore_websocket_broadcast");
     kore_websocket_broadcast(self->op_conn, 
         op, 
         data.buf,
         data.len, 
         flag);
-
+    kore_log(LOG_DEBUG, "after kore_websocket_broadcast");
     Py_RETURN_NONE;
 }
 
@@ -102,7 +108,7 @@ static PyTypeObject ConnectionType = {
     "kore.Connection",             /* tp_name */
     sizeof(Connection),             /* tp_basicsize */
     0,                         /* tp_itemsize */
-    0,							/* tp_dealloc */
+    (destructor)Connection_dealloc,							/* tp_dealloc */
     0,                         /* tp_print */
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
@@ -165,10 +171,7 @@ pykore_connection_create(struct connection *conn)
 	Connection	*pyconn;
 	pyconn = PyObject_New(Connection, &ConnectionType);
 	if (pyconn == NULL) {
-		if (PyErr_Occurred())
-			PyErr_Print();
-
-		return NULL;
+    	return NULL;
 	}
 
 	pyconn->op_conn = conn;

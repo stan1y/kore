@@ -141,7 +141,7 @@ HttpFile_readall(HttpFile *self)
 	}
 
 	if (buf->offset == 0) {
-		/* Empty read -> None */
+		/* need to return a new reference to None */
 		pybuf = Py_None;
 		Py_INCREF(pybuf);
 	}
@@ -251,9 +251,6 @@ pykore_httpfile_create(struct http_file *file)
 	HttpFile	*pyfile;
 	pyfile = PyObject_New(HttpFile, &HttpFileType);
 	if (pyfile == NULL) {
-		if (PyErr_Occurred())
-			PyErr_Print();
-
 		return NULL;
 	}
 

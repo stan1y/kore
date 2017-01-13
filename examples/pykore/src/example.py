@@ -299,14 +299,15 @@ def video_stream(req):
 #
 
 def on_wsconnect(conn):
-	print("websocket - connected %s" % conn.addr)
+	print("websocket %s - connected %s" % (conn, conn.addr))
 
 def on_wsdisconnect(conn):
-	print("websocket - disconnected %s" % conn.addr)
+	print("websocket %s - disconnected %s" % (conn, conn.addr))
 
 def on_wsmessage(conn, op, data):
-	print("websocket - op=%d len=%s " % (op, len(data)))
-	conn.websocket_broadcast(op, data, WEBSOCKET_BROADCAST_GLOBAL)
+	print("websocket %s - op=%d len=%s data=%s" % (conn, op, len(data), data))
+	decoded = data.decode("utf-8")
+	conn.websocket_broadcast(op, decoded.encode("utf-8"), WEBSOCKET_BROADCAST_GLOBAL)
 
 def handle_wspage(req):
 	req.response_header("content-type", "text/html")
@@ -315,7 +316,7 @@ def handle_wspage(req):
 		req.response(200, wshtml.encode('utf-8'))
 
 def handle_wsconnect(req):
-	print("websocket - start connection")
+	print("websocket %s - start connection" % req)
 	req.websocket_handshake(on_wsconnect, on_wsdisconnect, on_wsmessage)
 	
 

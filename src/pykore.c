@@ -381,7 +381,7 @@ pykore_wsmessage(struct connection *c,
 		}
 	}
 	pyop = PyLong_FromUnsignedLong(op);
-	pydata = PyBytes_FromString(data);
+	pydata = PyBytes_FromStringAndSize(data, len);
 
 	kwargs = PyDict_New();
 	args = PyTuple_New(3);	
@@ -397,7 +397,6 @@ pykore_wsmessage(struct connection *c,
 			PyErr_Clear();
 		}
 	}
-	kore_log(LOG_DEBUG, "after python message callback");
 	
 	Py_DECREF(args);
 	Py_DECREF(kwargs);

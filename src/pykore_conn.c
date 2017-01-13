@@ -80,13 +80,11 @@ Connection_wsbroadcast(Connection *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "Iy*i", &op, &data, &flag))
         return NULL;
 
-    kore_log(LOG_DEBUG, "before kore_websocket_broadcast");
     kore_websocket_broadcast(self->op_conn, 
         op, 
         data.buf,
         data.len, 
         flag);
-    kore_log(LOG_DEBUG, "after kore_websocket_broadcast");
     Py_RETURN_NONE;
 }
 

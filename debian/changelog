@@ -1,0 +1,15 @@
+kore (2.0.0) unstable; urgency=high
+
+  This is a major version bump due to several API changes and massive new features.
+  The most notable additions/changes in this release are:
+  * Private keys are now isolated in a seperate proces
+  * Build your kore applications as single binaries
+  * Pool backed memory allocation via kore_malloc()
+  * HTTP body API improvements
+  * Postgresql API improvements
+  * Introduced build.conf
+  * Optional JSONRPC support
+  * Several new examples
+  * And more...
+
+ -- Stanislav Yudin <stan@endlessinsomnia.com>  Mon 30 Jan 2017 14:20:13 AEDT

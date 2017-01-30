@@ -1,0 +1,13 @@
+Source: kore
+Maintainer: Stanislav Yudin <stan@endlessinsomnia.com>
+Section: net
+Priority: extra
+Build-Depends: libpq-dev (>= 9.0), debhelper (>= 7)
+Standards-Version: 3.8.4
+
+Package: kore
+Architecture: any
+Homepage: http://gostackless.com
+Depends: ${shlibs:Depends}, ${misc:Depends}, libpq (>= 9.0)
+Provides: kore
+Description: Kore (https://kore.io) is an easy to use web application framework for writing scalable web APIs in C. Its main goals are security, scalability and allowing rapid development and deployment of such APIs.

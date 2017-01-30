@@ -1,7 +1,11 @@
 # Kore Makefile
 
 CC?=gcc
-PREFIX?=/usr/local
+ifneq ("$(DESTDIR)", "")
+	PREFIX?=$(DESTDIR)
+else
+	PREFIX?=/usr/local
+endif
 OBJDIR?=obj
 KORE=kore
 KODEV=kodev/kodev

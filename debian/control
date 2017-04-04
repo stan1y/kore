@@ -1,13 +1,13 @@
 Source: kore
-Maintainer: Stanislav Yudin <stan@endlessinsomnia.com>
+Maintainer: Joris Vink <joris@coders.se>
 Section: net
 Priority: extra
-Build-Depends: libssl-dev (>= 1.0.0), libpq-dev (>= 9.0), debhelper (>= 7)
+Build-Depends: libssl-dev (>= 1.0.0), libpq-dev (>= 9.0), debhelper (>= 7), python-dev (>=3.3)
 Standards-Version: 3.8.4
 
 Package: kore
 Architecture: any
-Homepage: http://gostackless.com
-Depends: ${shlibs:Depends}, ${misc:Depends}, libssl (>= 1.0.0), libpq (>= 9.0)
+Homepage: https://kore.io
+Depends: ${shlibs:Depends}, ${misc:Depends}, libssl (>= 1.0.0), libpq (>= 9.0), python-dev (>=3.3)
 Provides: kore
 Description: Kore (https://kore.io) is an easy to use web application framework for writing scalable web APIs in C. Its main goals are security, scalability and allowing rapid development and deployment of such APIs.

@@ -1,3 +1,9 @@
+kore (2.1.master) unstable; urgency=low
+
+  This is a development snapshot of kore master branch
+
+ -- Stanislav Yudin <stan@endlessinsomnia.com>  Tue, 30 May 2017 06:12:42 +0000
+
 kore (2.0.0) unstable; urgency=high
 
   This is a major version bump due to several API changes and massive new features.

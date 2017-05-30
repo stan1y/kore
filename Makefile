@@ -1,7 +1,11 @@
 # Kore Makefile
 
 CC?=gcc
-PREFIX?=/usr/local
+ifneq ("$(DESTDIR)", "")
+	PREFIX?=$(DESTDIR)
+else
+	PREFIX?=/usr/local
+endif
 OBJDIR?=obj
 KORE=kore
 KODEV=kodev/kodev
@@ -21,7 +25,7 @@ CFLAGS+=-Wall -Werror -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS+=-Wmissing-declarations -Wshadow -Wpointer-arith -Wcast-qual
 CFLAGS+=-Wsign-compare -Iincludes -std=c99 -pedantic
 CFLAGS+=-DPREFIX='"$(PREFIX)"'
-LDFLAGS=-rdynamic -lssl -lcrypto
+LDFLAGS=-rdynamic -lz -lssl -lcrypto
 
 ifneq ("$(KORE_SINGLE_BINARY)", "")
 	CFLAGS+=-DKORE_SINGLE_BINARY

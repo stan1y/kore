@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+DH_VERBOSE=1
+DPKG_EXPORT_BUILDFLAGS = 1
+
+include /usr/share/dpkg/default.mk
+
+export PGSQL=1
+export TASKS=1
+
+%:
+	dh $@

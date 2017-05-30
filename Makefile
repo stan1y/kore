@@ -87,10 +87,10 @@ endif
 
 ifneq ("$(PYTHON)", "")
 	S_SRC+=src/python.c
-	LDFLAGS+=$(shell python3-config --ldflags)
-	CFLAGS+=$(shell python3-config --includes) -DKORE_USE_PYTHON
+	LDFLAGS+=$(shell python3.6-config --ldflags)
+	CFLAGS+=$(shell python3.6-config --includes) -DKORE_USE_PYTHON
 	FEATURES+=-DKORE_USE_PYTHON
-	FEATURES_INC+=$(shell python3-config --includes)
+	FEATURES_INC+=$(shell python3.6-config --includes)
 endif
 
 OSNAME=$(shell uname -s | sed -e 's/[-_].*//g' | tr A-Z a-z)
